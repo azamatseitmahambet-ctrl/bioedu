@@ -81,6 +81,7 @@ main{min-width:0}
 
 /* lesson-plan tables (Word-like) */
 .tw{overflow-x:auto}
+.wl{border-bottom:1px solid var(--line);height:24px;margin:2px 0}
 table.kmzh{width:100%;border-collapse:collapse;font-size:14px;min-width:760px}
 table.kmzh td,table.kmzh th{border:1px solid var(--line);padding:7px 9px;vertical-align:top;text-align:left}
 table.kmzh th{background:var(--soft);font-weight:700}
@@ -745,43 +746,88 @@ function afterWS(i) {
 }
 
 /* ---------- tasks bank (3 levels) ---------- */
+/* ---------- Сараланған тапсырмалар: оқу мақсатына сай, әр тақырыпқа әртүрлі, оқушыға беретін парақ ---------- */
+const LINE = n => Array.from({ length: n }, () => '<div class="wl"></div>').join('');
+const ANS = t => ` <span class="note ans" hidden>(${t})</span>`;
+function goalKind(L) {
+  const g = (L.goal || '').toLowerCase();
+  if (/есепте/.test(g)) return 'calc'; if (/салыстыр/.test(g)) return 'cmp'; if (/зертте/.test(g)) return 'inv';
+  if (/жікте|ажырат|тану|анықта|сәйкестендір/.test(g)) return 'cls'; if (/бағала|негізде|дәйекте|дәлелде/.test(g)) return 'eval';
+  if (/түсінд|байланыст/.test(g)) return 'expl'; if (/құрастыр|құру|жасау/.test(g)) return 'make'; return 'desc';
+}
+const VERB = { calc: 'есептейді', cmp: 'ұқсастығы мен айырмашылығын салыстырады', inv: 'тәжірибе нәтижесін талдап, қорытынды жасайды', cls: 'белгілері бойынша ажыратады (жіктейді)', eval: 'дәлелдер келтіріп бағалайды', expl: 'себеп-салдар байланысын түсіндіреді', make: 'сызба (модель) құрастырады', desc: 'құрылысы мен қызметін сипаттайды' };
+const CALC = {
+  u2: { t: 'Микрофотосуреттегі жасушаның суреттегі ұзындығы 45 мм, ұлғаю ×1500. Жасушаның нақты өлшемін мкм-мен есептеңіз. Тағы бір суретте 2 мкм бактерия 30 мм болып көрінеді – ұлғаюды табыңыз.', a: '45 мм = 45 000 мкм; 45 000 / 1500 = 30 мкм; 30 мм = 30 000 мкм; 30 000 / 2 = ×15 000', ds: ['Бірліктерді (мм → мкм) дұрыс түрлендіреді', 'Нақты өлшемді формуламен есептейді', 'Ұлғаюды дұрыс табады'] },
+  u5: { t: 'Шөптегі энергия 50 000 кДж. Шөп → шегіртке → бақа → жылан → бүркіт тізбегінде 10% ережесі бойынша әр деңгейге өтетін энергияны есептеп, энергия пирамидасын салыңыз.', a: '5000 → 500 → 50 → 5 кДж', ds: ['Әр деңгейдегі энергияны дұрыс есептейді', 'Энергия пирамидасын масштабпен салады', 'Энергияның 90%-ы қайда жұмсалатынын түсіндіреді'] },
+  '27': { t: 'Оқушының тыныс алу көлемі 500 мл, қосымша дем алу көлемі 1500 мл, қосымша дем шығару көлемі 1500 мл. Өкпенің тіршілік сыйымдылығын (ӨТС) есептеп, 15 жастағы оқушының нормасымен (≈ 3000–3500 мл) салыстырыңыз.', a: 'ӨТС = 500 + 1500 + 1500 = 3500 мл – қалыпты', ds: ['ӨТС формуласын дұрыс жазады', 'Есептеуді дұрыс орындайды', 'Нормамен салыстырып қорытынды жасайды'] },
+  '23': { t: 'Тыныштықта пульс 15 с ішінде 18 соққы, 20 рет отырып-тұрғаннан кейін 30 соққы, 1 минут демалғаннан кейін 20 соққы болды. Руфье индексін есептеңіз: I = (4·(P₁+P₂+P₃) − 200)/10.', a: 'I = (4·68 − 200)/10 = 7,2 – орташа', ds: ['Мәндерді формулаға дұрыс қояды', 'Индексті дұрыс есептейді', 'Нәтижені бағалау кестесімен түсіндіреді'] },
+  u4: { t: 'Ашытқы популяциясы әр 2 сағатта екі есе көбейеді. Бастапқыда 100 жасуша болса, 12 сағаттан кейін неше жасуша болады? Ресурс шектеулі болса, қисық қандай пішінге ауысады?', a: '100 · 2⁶ = 6400; S-тәрізді (сигмоидты) қисық', ds: ['Ұрпақ санын (6) дұрыс табады', 'Жасуша санын есептейді', 'Шектеуші факторларды атап, қисықты түсіндіреді'] },
+  u35: { t: 'F₂ ұрпағында 315 күлгін және 108 сары дән алынды. Ажырау қатынасын есептеңіз. Ата-аналардың (F₁) генотипін жазып, Пеннет торын құрыңыз.', a: '315 : 108 ≈ 2,9 : 1 ≈ 3 : 1; Aa × Aa', ds: ['Қатынасты дұрыс есептейді', 'F₁ генотипін анықтайды', 'Пеннет торын дұрыс құрады'] },
+  u30: { t: 'ДНҚ молекуласында 600 нуклеотид бар, оның 20%-ы аденин. Гуанин, тимин, цитозин санын және молекула ұзындығын (бір жұп – 0,34 нм) есептеңіз.', a: 'A = T = 120; G = C = 180; 300 жұп · 0,34 = 102 нм', ds: ['Чаргафф ережесін қолданады', 'Әр нуклеотид санын есептейді', 'Ұзындықты дұрыс табады'] }
+};
+function taskBank(L, i) {
+  const B = [], add = (lv, id, f) => B.push({ lv, id, f });
+  const bp = typeof BENCH !== 'undefined' && BENCH[L.n], sp = typeof SIMS !== 'undefined' && SIMS[L.n], q = L.qs || {}, n7 = GR === '7';
+  const pick = (arr, k, s) => shuffle(arr, hashStr(L.n) + s).slice(0, k);
+  if (L.tf && L.tf.length >= 3) add('A', 'tf', () => { const t = pick(L.tf, n7 ? 4 : 3, 1); return { name: 'Дұрыс па, жалған ба?', bloom: 'білу', form: 'Ж', instr: 'Тұжырым дұрыс болса «Д», жалған болса «Ж» жаз. Жалған тұжырымды дұрыстап қайта жаз.', body: `<ol>${t.map(x => `<li>${esc(x[0])} ____${ANS(x[1] ? 'Д' : 'Ж')}</li>`).join('')}</ol>`, ds: t.map((x, j) => `${j + 1}-тұжырымды дұрыс бағалайды`) }; });
+  if (L.mc && L.mc.length >= 2) add('A', 'mc', () => { const t = pick(L.mc, n7 ? 2 : 3, 2); return { name: 'Тест', bloom: 'білу, түсіну', form: 'Ж', instr: 'Дұрыс жауапты дөңгелекке ал.', body: `<ol>${t.map((x, qn) => { const o = shuffle(x[1].map((v, j) => [v, j === (x[2] ?? 0)]), hashStr(L.n) + qn + 9); return `<li>${esc(x[0])}<br>${o.map((v, j) => `${'АӘБВ'[j]}) ${esc(v[0])}`).join('&nbsp;&nbsp; ')}${ANS('АӘБВ'[o.findIndex(v => v[1])])}</li>`; }).join('')}</ol>`, ds: t.map((x, j) => `${j + 1}-сұраққа дұрыс жауап береді`) }; });
+  const pr = matchPairs(L).slice(0, 4);
+  if (pr.length >= 3) add('A', 'match', () => { const rp = shuffle(pr.map((p, k) => [k, p[1]]), hashStr(L.n) + 3); return { name: 'Сәйкестендір', bloom: 'білу, түсіну', form: 'Ж', instr: 'Ұғымды оның сипаттамасымен сызықпен қос.', body: `<table class="blank-table"><tr><th>Ұғым</th><th>Сипаттама</th></tr>${pr.map((p, k) => `<tr><td>${k + 1}. ${esc(p[0])}</td><td>${'АӘБВ'[k]}) ${esc(shortText(rp[k][1], 110))}</td></tr>`).join('')}</table>${ANS(pr.map((p, k) => `${k + 1}–${'АӘБВ'[rp.findIndex(r => r[0] === k)]}`).join(', '))}`, ds: ['Ұғымдардың жартысын дұрыс сәйкестендіреді', 'Барлық ұғымды дұрыс сәйкестендіреді'] }; });
+  const cz = cloze(L).slice(0, n7 ? 3 : 4);
+  if (cz.length >= 3) add('A', 'cloze', () => ({ name: 'Сөйлемді толықтыр', bloom: 'білу', form: 'Ж', instr: `Бос орынға керекті сөзді жаз. Сөздер: ${shuffle(cz.map(c => c.word), hashStr(L.n)).join(', ')}.`, body: `<ol>${cz.map(c => `<li>${esc(c.text)}${ANS(c.word)}</li>`).join('')}</ol>`, ds: cz.map((c, j) => `${j + 1}-сөйлемді дұрыс толықтырады`) }));
+  if (L.gl && L.gl.length >= 2) add('A', 'gl', () => { const t = L.gl.slice(0, n7 ? 2 : 3); return { name: 'Ұғымды түсіндір', bloom: 'түсіну', form: 'Ж', instr: 'Ұғымға өз сөзіңмен анықтама беріп, бір мысал келтір.', body: `<ol>${t.map(x => `<li><b>${esc(x[0])}</b> – ${LINE(1)}${ANS(shortText(x[1], 120))}</li>`).join('')}</ol>`, ds: t.map(x => `«${x[0]}» ұғымын дұрыс түсіндіреді`) }; });
+  { const keys = Object.keys(D.lessons), j = keys.indexOf(String(L.n)), O = D.lessons[keys[(j + 9) % keys.length]], odd = (O.terms || []).find(t => t.length < 30 && !L.terms.includes(t)), own = L.terms.filter(t => t.length < 30).slice(0, 3);
+    if (odd && own.length >= 3) add('A', 'odd', () => { const all = shuffle([...own, odd], hashStr(L.n) + 4); return { name: 'Артығын тап', bloom: 'түсіну', form: 'Ж', instr: 'Тақырыпқа қатысы жоқ артық ұғымды тауып, сызып таста. Қалғандарын біріктіретін белгіні жаз.', body: `<p style="font-size:17px">${all.map(esc).join(' · ')}${ANS('артығы: ' + odd)}</p>${LINE(1)}`, ds: ['Артық ұғымды дұрыс табады', 'Қалған ұғымдардың ортақ белгісін атайды'] }; }); }
+  if (L.figs && L.figs.length) add('A', 'fig', () => { const f = L.figs[hashStr(L.n) % L.figs.length]; return { name: 'Суретпен жұмыс', bloom: 'білу, түсіну', form: 'Ж', instr: `Оқулықтағы ${f[0]}-суретке (${f[2]}-бет) қара. Суретті дәптерге салып, негізгі бөліктерін белгіле.`, body: `<p class="note">${esc(f[1] || '')}</p>${LINE(2)}`, ds: ['Суретті дұрыс салады', 'Кемінде 3 бөлігін дұрыс белгілейді'] }; });
+  if ((q['Білу және түсіну'] || []).length >= 2) add('A', 'tq', () => { const t = q['Білу және түсіну'].slice(0, 2).map(cleanQ); return { name: 'Оқулықпен жұмыс', bloom: 'білу, түсіну', form: 'Ж', instr: `Оқулықтағы «${L.title}» тақырыбын оқып, сұрақтарға жауап бер.`, body: `<ol>${t.map(x => `<li>${esc(x)}${LINE(1)}</li>`).join('')}</ol>`, ds: t.map((x, j) => `${j + 1}-сұраққа толық жауап береді`) }; });
+  // B – қолдану, талдау
+  if (L.tb && L.tb[2].length) add('B', 'tb', () => ({ name: 'Кестені толтыр', bloom: 'қолдану', form: 'ЖҚ', instr: `«${L.tb[0]}» кестесін толтыр.`, body: `<table class="blank-table"><tr>${L.tb[1].map(h => `<th>${esc(h)}</th>`).join('')}</tr>${L.tb[2].map(r => `<tr><td>${esc(r)}</td>${L.tb[1].slice(1).map(() => '<td>&nbsp;</td>').join('')}</tr>`).join('')}</table>`, ds: L.tb[2].slice(0, 4).map(r => `«${r}» жолын дұрыс толтырады`) }));
+  if (L.tb && L.tb[1].length >= 3) add('B', 'venn', () => ({ name: 'Венн диаграммасы', bloom: 'талдау', form: 'ЖҚ', instr: `«${L.tb[1][1]}» мен «${L.tb[1][2]}» ұғымдарын Венн диаграммасымен салыстыр. Белгілер: ${L.tb[2].join(', ')}.`, body: '<div style="display:flex;gap:0;margin:8px 0"><div style="width:180px;height:120px;border:2px solid currentColor;border-radius:50%"></div><div style="width:180px;height:120px;border:2px solid currentColor;border-radius:50%;margin-left:-60px"></div></div>', ds: [`«${L.tb[1][1]}» ерекшелігін жазады`, `«${L.tb[1][2]}» ерекшелігін жазады`, 'Ортақ белгілерін жазады'] }));
+  if (L.ord) add('B', 'ord', () => ({ name: 'Реттілікті қалпына келтір', bloom: 'қолдану', form: 'Ж', instr: `«${L.ord[0]}» – кезеңдерді дұрыс ретпен нөмірле және әр кезеңде не болатынын бір сөйлеммен жаз.`, body: `<p>${shuffle(L.ord[1], hashStr(L.n) + 6).map(x => `☐ ${esc(x)}`).join('<br>')}</p>${ANS(L.ord[1].join(' → '))}`, ds: ['Кезеңдерді дұрыс ретпен орналастырады', 'Әр кезеңнің мәнін түсіндіреді'] }));
+  if (L.srt) { const ent = Object.entries(L.srt[1] || {}); const cats = [...new Set(ent.map(e => e[1]))]; if (ent.length >= 4 && cats.length >= 2) add('B', 'srt', () => ({ name: 'Топтастыр', bloom: 'талдау', form: 'Ж', instr: `${L.srt[0] || 'Ұғымдарды топтарға бөл'}: ${shuffle(ent.map(e => e[0]), hashStr(L.n)).join(', ')}.`, body: `<table class="blank-table"><tr>${cats.map(c => `<th>${esc(c)}</th>`).join('')}</tr><tr>${cats.map(() => '<td style="height:60px"></td>').join('')}</tr></table>${ANS(cats.map(c => c + ': ' + ent.filter(e => e[1] === c).map(e => e[0]).join(', ')).join('; '))}`, ds: cats.map(c => `«${c}» тобын дұрыс толтырады`) })); }
+  if (bp) add('B', 'exp', () => { const R = bp.rules.filter(r => !/Қыздыру керек|Реакция жүру үшін|Күтіңіз|салынды|^Жасыл|^Мөлдір сорпа$|бос/.test(r[3])).slice(0, n7 ? 3 : 4); const sub = s => s.split(' ').filter(x => x && x[0] !== '!').map(x => x[0] === '@' ? ((TOOLS[(x.slice(1).match(/^(h37|h100|[a-z]+)/) || [0, ''])[1]] || [0, x])[1]).toLowerCase() : ((bp.rg.find(r => r[0] === x) || [0, x])[1])).join(' + ');
+    return { name: 'Тәжірибе нәтижесін талда', bloom: 'талдау', form: 'ЖҚ', instr: `«${bp.title}» тәжірибесінің нәтижелері берілген. Әр бақылаудан қорытынды жаса.`, body: `<table class="blank-table"><tr><th>Не істелді</th><th>Не байқалды</th><th>Қорытынды</th></tr>${R.map(r => `<tr><td>${esc(sub(r[0]))}</td><td>${esc(r[3].split(' – ')[0])}</td><td>&nbsp;${ANS(r[3].split(' – ')[1] || '')}</td></tr>`).join('')}</table>`, ds: R.slice(0, 3).map((r, j) => `${j + 1}-бақылаудан дұрыс қорытынды жасайды`) }; });
+  if (sp && !bp) add('B', 'sim', () => ({ name: 'Модельмен жұмыс', bloom: 'қолдану, талдау', form: 'ЖҚ', instr: `«Виртуалды зертхана» бөліміндегі «${sp.title}» моделін аш. ${sp.how || ''} Сұрақтарға жауап бер.`, body: `<ol>${(sp.q || []).slice(0, 3).map(x => `<li>${esc(x)}${LINE(1)}</li>`).join('')}</ol>`, ds: (sp.q || []).slice(0, 3).map((x, j) => `${j + 1}-сұраққа модель нәтижесіне сүйеніп жауап береді`) }));
+  if ((q['Қолданылуы'] || []).length) add('B', 'app', () => { const t = q['Қолданылуы'].slice(0, 2).map(cleanQ); return { name: 'Білімді қолдан', bloom: 'қолдану', form: 'Ж', instr: 'Сұрақтарға тақырып ұғымдарын пайдаланып жауап бер.', body: `<ol>${t.map(x => `<li>${esc(x)}${LINE(2)}</li>`).join('')}</ol>`, ds: t.map((x, j) => `${j + 1}-сұраққа ұғымдарды дұрыс қолданып жауап береді`) }; });
+  if ((q['Талдау'] || []).length) add('B', 'an', () => { const t = cleanQ(q['Талдау'][0]); return { name: 'Себеп пен салдар', bloom: 'талдау', form: 'ЖҚ', instr: `${t} Жауабыңды «себеп → үдеріс → салдар» тізбегімен көрсет.`, body: '<p>Себеп: ________________ → Үдеріс: ________________ → Салдар: ________________</p>', ds: ['Себебін дұрыс көрсетеді', 'Салдарын дұрыс түсіндіреді'] }; });
+  if (CALC[L.n]) add('B', 'calc', () => { const c = CALC[L.n]; return { name: 'Есеп шығар', bloom: 'қолдану', form: 'Ж', instr: c.t, body: `${LINE(3)}${ANS(c.a)}`, ds: c.ds }; });
+  // C – жинақтау, бағалау
+  if (L.cs && L.cs.length > 1) add('C', 'case', () => ({ name: 'Жағдаятты шеш', bloom: 'бағалау', form: 'Ж', instr: L.cs[0], body: `<ol>${L.cs.slice(1).map(x => `<li>${esc(x)}${LINE(1)}</li>`).join('')}</ol>`, ds: L.cs.slice(1).map((x, j) => `${j + 1}-сұраққа дәлелді жауап береді`) }));
+  if ((q['Бағалау'] || q['Пікірталас'] || []).length) add('C', 'arg', () => { const t = cleanQ((q['Бағалау'] || q['Пікірталас'])[0]); return { name: 'Пікіріңді дәлелде', bloom: 'бағалау', form: 'Ж', instr: `${t} Жауабыңды ТДМҚ құрылымымен жаз: Тезис – Дәлел – Мысал – Қорытынды.`, body: '<p>Т: ____________________<br>Д: ____________________<br>М: ____________________<br>Қ: ____________________</p>', ds: ['Нақты тезис ұсынады', 'Ғылыми дәлел келтіреді', 'Өмірден мысал келтіреді'] }; });
+  if ((q['Синтез'] || []).length) add('C', 'syn', () => { const t = cleanQ(q['Синтез'][0]); return { name: 'Шығармашылық тапсырма', bloom: 'жинақтау', form: 'Ж', instr: t, body: LINE(3), ds: ['Тақырып ұғымдарын дұрыс пайдаланады', 'Өз идеясын жүйелі жеткізеді'] }; });
+  if (bp || sp) add('C', 'hyp', () => ({ name: 'Зерттеуді жоспарла', bloom: 'жинақтау', form: 'ЖҚ', instr: `«${(bp || sp).title}» тақырыбы бойынша өз тәжірибеңді жоспарла.`, body: '<p>Гипотеза: «Егер ____________, онда ____________, себебі ____________».<br>Өзгертетін фактор: ________ Өлшейтін көрсеткіш: ________<br>Тұрақты қалатын жағдайлар: ________ Бақылау тобы: ________</p>', ds: ['Гипотезаны «Егер…, онда…» түрінде дұрыс құрады', 'Тәуелсіз және тәуелді айнымалыны анықтайды', 'Бақылау тобын көрсетеді'] }));
+  add('C', 'sync', () => ({ name: 'Синквейн', bloom: 'жинақтау', form: 'Ж', instr: `«${L.title.split(/[.:]/)[0]}» тақырыбына синквейн құр: 1) зат есім; 2) 2 сын есім; 3) 3 етістік; 4) 4 сөзден тұратын сөйлем; 5) синоним.`, body: LINE(5), ds: ['Синквейн құрылымын сақтайды', 'Тақырыптың мәнін дәл ашады'] }));
+  return B;
+}
+function chooseTasks(L, i, sh = 0, noPrev) {
+  const B = taskBank(L, i), gk = goalKind(L), h = hashStr(L.n) + i * 7 + sh, n7 = GR === '7', n9 = GR === '9';
+  const pref = { calc: ['calc'], cmp: ['venn', 'tb'], inv: ['exp', 'sim', 'hyp'], cls: ['srt', 'match', 'tb'], eval: ['arg', 'case'], expl: ['an', 'ord', 'sim'], make: ['ord', 'sync', 'tb'], desc: ['fig', 'tb', 'gl'] }[gk];
+  const lv = (k, n) => { const pool = B.filter(b => b.lv === k), pri = pool.filter(b => pref.includes(b.id)).sort((a, b) => pref.indexOf(a.id) - pref.indexOf(b.id)), rest = pool.filter(b => !pref.includes(b.id)), rot = rest.length ? rest.slice(h % rest.length).concat(rest.slice(0, h % rest.length)) : [];
+    return [...pri.slice(0, 1), ...rot].slice(0, n); };
+  const sel = [...lv('A', n7 ? 2 : 1), ...lv('B', n9 ? 2 : 1), ...lv('C', n7 ? 1 : n9 ? 2 : 1)];
+  if (!noPrev && sh < 6) { let j = i - 1; while (j >= 0 && SEQ[j].kind !== 'L') j--; if (j >= 0) { const pv = chooseTasks(getL(j), j, 0, true).map(t => t.id).join(); if (pv === sel.map(b => b.id).join()) return chooseTasks(L, i, sh + 1, false); } }
+  return sel.map(b => Object.assign({ lv: b.lv, id: b.id }, b.f()));
+}
 function renderTasks(i) {
-  const L = getL(i), q = L.qs || {};
-  const items = [];
-  (q['Білу және түсіну'] || []).forEach(x => items.push(['A', 'Ж', 'ашық сұрақ', x]));
-  L.tf.forEach(x => items.push(['A', 'Ж', 'Иә/Жоқ', esc(x[0]) + ' <span class="note ans" hidden>(' + (x[1] ? 'Иә' : 'Жоқ') + ')</span>']));
-  matchPairs(L).slice(0, 4).forEach(x => items.push(['A', 'ЖҚ', 'сәйкестендіру', `«${esc(x[0])}» – ${esc(x[1])}`]));
-  (q['Қолданылуы'] || []).forEach(x => items.push(['B', 'Ж', 'ашық сұрақ', x]));
-  (q['Талдау'] || []).forEach(x => items.push(['B', 'ЖҚ', 'талдау', x]));
-  items.push(['B', 'ЖҚ', 'кесте', `«${L.tb[0]}» кестесін толтыр: ${L.tb[2].join('; ')}`]);
-  L.mc.forEach(m => items.push(['B', 'Ж', 'тест', `${esc(m[0])} ${m[1].map((o, j) => `${'ABCD'[j]}) ${esc(o)}`).join('; ')} <span class="note ans" hidden>(${'ABCD'[m[2]]})</span>`]));
-  items.push(['C', 'Ж', 'кейс-стади', `<b>Жағдаят:</b> ${esc(L.cs[0])} ${L.cs.slice(1).map((x, j) => `${j + 1}) ${esc(x)}`).join(' ')}`]);
-  (q['Синтез'] || []).forEach(x => items.push(['C', 'Ж', 'синтез', x]));
-  (q['Бағалау'] || []).forEach(x => items.push(['C', 'ЖҚ', 'бағалау', x]));
-  (q['Пікірталас'] || []).forEach(x => items.push(['C', 'Т', 'пікірталас', x]));
-  L.gr.slice(1).forEach((x, j) => items.push(['B', 'Т', L.gr[0], `${j + 1}-топ: ${x}`]));
-  const name = { A: 'А деңгейі · білу, түсіну', B: 'В деңгейі · қолдану, талдау', C: 'С деңгейі · жинақтау, бағалау' };
-  const tf3 = L.tf;
-  return `<div class="sheet"><div class="lesson-head"><div><div class="eyebrow">Сараланған тапсырмалар банкі · ${i + 1}-сабақ</div><h2>${esc(lessonLabel(i))}</h2>
-  <p class="note">Сұрақтардың бір бөлігі оқулық параграфының соңындағы тапсырмалардан алынған; кейс, кесте, тест платформада құрастырылған.</p></div>
-  <div class="actions"><button class="btn" type="button" id="tKey">Жауаптарды көрсету</button></div></div>
-  <div class="filters"><label>Деңгей <select id="fLev"><option value="">Барлығы</option><option>A</option><option>B</option><option>C</option></select></label>
-  <label>Жұмыс түрі <select id="fFmt"><option value="">Барлығы</option><option value="Ж">Жеке (Ж)</option><option value="ЖҚ">Жұптық (ЖҚ)</option><option value="Т">Топтық (Т)</option></select></label>
-  <label>Тапсырма түрі <select id="fType"><option value="">Барлығы</option>${[...new Set(items.map(x => x[2]))].map(t => `<option>${esc(t)}</option>`).join('')}</select></label></div>
-  <div class="level-grid" id="lvGrid">${['A', 'B', 'C'].map(lv => `<section class="level" data-lv="${lv}"><h3><span class="chip ${lv.toLowerCase()}">${lv}</span> ${name[lv]}</h3><ol>${items.filter(x => x[0] === lv).map(x => `<li data-f="${x[1]}" data-t="${esc(x[2])}"><span class="chip">${x[1]}</span> <span class="chip">${esc(x[2])}</span> ${x[3].includes('<') ? x[3] : esc(x[3])}</li>`).join('')}</ol></section>`).join('')}</div></div>
-  <div class="sheet"><h3>10 балдық сараланған жиынтық тапсырма (дескриптормен)</h3>
-  <div class="tw"><table class="kmzh"><tr><th>Деңгей</th><th>Тапсырма</th><th>Дескриптор</th><th>Балл</th></tr>
-  <tr><td><span class="chip a">A</span></td><td>«Иә» немесе «Жоқ» деп жауап бер:<ol>${tf3.map(x => `<li>${esc(x[0])}</li>`).join('')}</ol></td><td><ul class="desc">${tf3.map((x, j) => `<li>${j + 1}-тұжырымды дұрыс бағалайды</li>`).join('')}</ul></td><td class="mono">${tf3.length}</td></tr>
-  <tr><td><span class="chip b">B</span></td><td>«${esc(L.tb[0])}» кестесін толтыр (${L.tb[1].map(esc).join(' / ')})</td><td><ul class="desc">${L.tb[2].map(r => `<li>«${esc(r)}» жолын дұрыс толтырады</li>`).join('')}</ul></td><td class="mono">4</td></tr>
-  <tr><td><span class="chip c">C</span></td><td>Кейс-стади: ${esc(L.cs[0])}<ol>${L.cs.slice(1).map(x => `<li>${esc(x)}</li>`).join('')}</ol></td><td><ul class="desc">${L.cs.slice(1).map((x, j) => `<li>${j + 1}-сұраққа дәлелді жауап береді</li>`).join('')}</ul></td><td class="mono">3</td></tr>
-  <tr><th colspan="3">Барлығы</th><th class="mono">${tf3.length + 7}</th></tr></table></div></div>`;
+  const L = getL(i);
+  if (L.kind === 'R' || L.kind === 'T') return `<div class="sheet"><h2>${esc(lessonLabel(i))}</h2><p>Бұл – тоқсандық қайталау/жиынтық бағалау сабағы. ТЖБ тапсырмалары «ҚМЖ» бөлімінде 10 нұсқамен берілген.</p></div>`;
+  const T = chooseTasks(L, i), tot = T.reduce((a, t) => a + t.ds.length, 0), gk = goalKind(L);
+  const name = { A: 'А деңгейі (білу, түсіну)', B: 'В деңгейі (қолдану, талдау)', C: 'С деңгейі (жинақтау, бағалау)' };
+  return `<div class="sheet"><div class="lesson-head"><div><div class="eyebrow">Сараланған тапсырмалар · ${GR}-сынып · ${i + 1}-сабақ</div><h2>${esc(lessonLabel(i))}</h2></div>
+    <div class="actions noprint"><button class="btn" type="button" id="tKey">Жауаптарды көрсету</button><button class="btn pri" type="button" data-copy="#tDoc">Word-қа көшіру</button>${window.self === window.top ? '<button class="btn" type="button" onclick="window.print()">Басып шығару</button>' : ''}</div></div>
+  <div id="tDoc" class="ws">
+  <p>Аты-жөні: _______________________________ Сынып: ${GR} «${esc(S.letter)}» Күні: ${fmt(DATES[i])}</p>
+  <table class="kmzh" style="min-width:0"><tr><td class="k">Оқу мақсаты</td><td>${esc(L.codes.join(', '))} – ${esc(lc1(L.goal.replace(/\.$/, '')))}</td></tr>
+  <tr><td class="k">Бағалау критерийі</td><td>Білім алушы ${esc(lc1(L.title.split(/[.:]/)[0]))} тақырыбы бойынша ${VERB[gk]}.</td></tr></table>
+  ${T.map((t, k) => `<div class="task" style="margin-top:14px"><h3><span class="chip ${t.lv.toLowerCase()}">${t.lv}</span> ${k + 1}-тапсырма. ${esc(t.name)} <span class="note">(${t.form === 'Ж' ? 'жеке' : t.form === 'ЖҚ' ? 'жұптық' : 'топтық'} · Блум: ${t.bloom} · ${t.ds.length} балл)</span></h3><p><b>${esc(t.instr)}</b></p>${t.body}
+    <details class="noprint" style="margin-top:6px"><summary class="note">Дескриптор</summary><ul class="desc">${t.ds.map(d => `<li>${esc(d)} – 1 балл</li>`).join('')}</ul></details></div>`).join('')}
+  <div class="task" style="margin-top:14px"><h3>Бағалау парағы</h3><table class="kmzh" style="min-width:0"><tr><th>Тапсырма</th>${T.map((t, k) => `<th>${k + 1} (${t.lv})</th>`).join('')}<th>Барлығы</th></tr><tr><td>Балл</td>${T.map(t => `<td>__ / ${t.ds.length}</td>`).join('')}<td>__ / ${tot}</td></tr></table>
+  <p class="note">А деңгейі – барлық оқушыға міндетті; В – көпшілігіне; С – жоғары деңгейдегі оқушыларға.</p></div>
+  <div class="task noprint" style="margin-top:14px"><h3>Мұғалімге: барлық дескрипторлар</h3><table class="kmzh" style="min-width:0"><tr><th>Тапсырма</th><th>Дескриптор</th><th>Балл</th></tr>${T.map((t, k) => `<tr><td>${k + 1}. ${esc(t.name)}</td><td><ul class="desc">${t.ds.map(d => `<li>${esc(d)}</li>`).join('')}</ul></td><td>${t.ds.length}</td></tr>`).join('')}<tr><th colspan="2">Барлығы</th><th>${tot}</th></tr></table></div>
+  </div></div>`;
 }
 function afterTasks() {
-  const f = () => { const lv = $('#fLev').value, fm = $('#fFmt').value, ty = $('#fType').value;
-    $$('#lvGrid .level').forEach(s => s.hidden = !!lv && s.dataset.lv !== lv);
-    $$('#lvGrid li').forEach(li => li.hidden = (fm && li.dataset.f !== fm) || (ty && li.dataset.t !== ty)); };
-  ['#fLev', '#fFmt', '#fType'].forEach(s => $(s).addEventListener('change', f));
-  $('#tKey').addEventListener('click', e => { const on = e.target.dataset.on !== '1'; e.target.dataset.on = on ? '1' : '0'; $$('.ans').forEach(a => a.hidden = !on); e.target.textContent = on ? 'Жауаптарды жасыру' : 'Жауаптарды көрсету'; });
+  const k = $('#tKey'); if (k) k.addEventListener('click', e => { const on = e.target.dataset.on !== '1'; e.target.dataset.on = on ? '1' : '0'; $$('.ans').forEach(a => a.hidden = !on); e.target.textContent = on ? 'Жауаптарды жасыру' : 'Жауаптарды көрсету'; });
 }
 
 /* ---------- inclusive ---------- */
@@ -908,41 +954,27 @@ function renderIncl(i) {
     `Сергіту: орныңнан тұрып, 5 рет созыл, 5 рет терең тыныс ал.`,
     `Тест: ${L.mc[0][0]}`,
     `Кестенің бір жолын толтыр: «${L.tb[0]}» – «${L.tb[2][0]}».`];
-  let body = '';
-  if (m === 'visual') body = `${sumBox}${termsBox}
-    <div class="task"><h3>Ауызша сұрақтар (оқушы ауызша жауап береді)</h3><ol>${oralQs(L).map(q => `<li class="big">${esc(q)} ${sayBtn(q, '🔊')}</li>`).join('')}</ol></div>
-    <div class="task"><h3>Ірі шрифтті «Иә/Жоқ»</h3>${yn}</div>
-    <div class="task"><h3>Ауызша тест (сұрақ пен жауап нұсқалары дауыстап оқылады)</h3>${mcOral}</div>
-    <div class="task"><h3>Қолмен зерттеу тапсырмасы</h3><p class="big">Топтық тапсырманы бедерлі (рельефті) материалмен орында: ${esc(L.gr[1])}. Пластилин, жіп, картон немесе муляжды пайдалан, бөліктерін саусақпен тауып, атын айт.</p></div>
-    ${inclTips(m)}`;
-  if (m === 'hearing') body = `<div class="task"><h3>Суретті тірек карточкалар</h3>${cards}</div>${sumBox}
-    <div class="task"><h3>Терминдер сөздігі</h3>${dict}</div>
-    <div class="task"><h3>Жазбаша қадамдық нұсқаулық</h3><ol class="steps">${steps.filter((x, k) => k !== 3).map(s => `<li><span>${esc(s)}</span></li>`).join('')}</ol></div>
-    <div class="task"><h3>Сәйкестендіру ойыны</h3><p class="note">Сол жақтағы ұғымды, сосын оның анықтамасын бас.</p><div id="inclMatch"></div></div>
-    <div class="task"><h3>«Иә/Жоқ»</h3>${yn}</div>
-    <div class="task"><h3>Видеоны субтитрмен көру</h3><p>${link('YouTube-тан видеосабақ табу', S.video[String(L.n)] || yt(L))}. Видеоны ашып, «CC» (субтитр) батырмасын қос. Көріп болған соң жаз:</p><ol>${(L.qs['Білу және түсіну'] || L.mc.map(q => q[0])).slice(0, 2).map(q => `<li>${esc(q)}</li>`).join('')}</ol></div>
-    ${inclTips(m)}`;
-  if (m === 'sen') body = `${sumBox}
-    <div class="task"><h3>Сөздік карточкалар</h3>${dict}</div>
-    ${clozeBox}
-    <div class="task"><h3>Сәйкестендіру ойыны</h3><p class="note">Ұғымды, сосын оның сипаттамасын бас.</p><div id="inclMatch"></div></div>
-    ${L.ord ? `<div class="task"><h3>Ретімен орналастыр: «${esc(L.ord[0])}»</h3><div id="inclOrder"></div></div>` : ''}
-    <div class="task"><h3>Жеңілдетілген тест (2 нұсқа)</h3>${two}</div>
-    <div class="task"><h3>Суреттермен жұмыс</h3>${cards}<p class="note">Карточкаларды қиып, суретті атауымен жұптастыруға береміз.</p></div>
-    ${inclTips(m)}`;
-  if (m === 'adhd') body = `<div class="task"><h3>Қысқа қадамдар (әрқайсысына 3 минут)</h3>
+  const keys = Object.keys(D.lessons), O = D.lessons[keys[(keys.indexOf(String(L.n)) + 9) % keys.length]], odd = (O.terms || []).find(t => t.length < 30 && !L.terms.includes(t)), own = L.terms.filter(t => t.length < 30).slice(0, 3);
+  const oddBox = odd && own.length >= 3 ? `<div class="task"><h3>Артығын тап</h3><p class="note">Тақырыпқа қатысы жоқ сөзді бас.</p><div class="yn">${shuffle([...own, odd], hashStr(L.n) + 2).map(w => `<button type="button" data-odd="${w === odd ? 1 : 0}" style="font-size:${m === 'visual' ? 20 : 16}px">${esc(w)}</button>`).join('')}</div><span class="note" id="oddR"></span></div>` : '';
+  const basket = `<div class="task"><h3>Себетке сал</h3><p class="note">Тұжырым дұрыс болса – жасыл себетке, жалған болса – қызыл себетке сал.</p>${L.tf.map((x, j) => `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:6px 0"><span class="${big}" style="flex:1 1 260px">${esc(x[0])}</span><button class="btn sm" type="button" data-bk="${j}" data-v="1">🟩 дұрыс</button><button class="btn sm" type="button" data-bk="${j}" data-v="0">🟥 жалған</button><span class="note" id="bkr${j}"></span></div>`).join('')}</div>`;
+  const listen = `<div class="task"><h3>Тыңда да қайтала</h3><p class="note">Әр сөзді тыңдап, дауыстап қайтала. Сосын оның мағынасын айт.</p><div class="bank">${L.terms.slice(0, 6).map(t => `<span style="font-size:20px">${esc(t)} ${sayBtn(t, '🔊')}</span>`).join('')}</div></div>`;
+  const drawBox = `<div class="task"><h3>Сал да белгіле</h3><p class="${big}">${esc(L.c.map(c => c.split(' ').slice(1).join(' ')).slice(0, 3).join(', '))} – осылардың бірін дәптерге сал. Мұғалім көмегімен 2 бөлігінің атын жаз.</p></div>`;
+  const tactile = `<div class="task"><h3>Қолмен зерттеу тапсырмасы</h3><p class="big">${esc(L.gr[1])}. Пластилин, жіп, картон немесе муляжды пайдалан, бөліктерін саусақпен тауып, атын айт.</p></div>`;
+  const oral = `<div class="task"><h3>Ауызша сұрақтар</h3><ol>${oralQs(L).map(q => `<li class="big">${esc(q)} ${sayBtn(q, '🔊')}</li>`).join('')}</ol></div>`;
+  const video = `<div class="task"><h3>Видеоны субтитрмен көру</h3><p>${link('YouTube-тан видеосабақ табу', S.video[String(L.n)] || yt(L))}. «CC» (субтитр) батырмасын қос. Көріп болған соң жаз:</p><ol>${(L.qs['Білу және түсіну'] || L.mc.map(q => q[0])).slice(0, 2).map(q => `<li>${esc(q)}</li>`).join('')}</ol></div>`;
+  const P = {
+    visual: [['Қысқаша мазмұны', sumBox], ['Тірек сөздер', termsBox], ['Ауызша сұрақтар', oral], ['Ірі шрифтті Иә/Жоқ', `<div class="task"><h3>Ірі шрифтті «Иә/Жоқ»</h3>${yn}</div>`], ['Ауызша тест', `<div class="task"><h3>Ауызша тест</h3>${mcOral}</div>`], ['Қолмен зерттеу', tactile], ['Тыңда да қайтала', listen], ['Артығын тап', oddBox]],
+    hearing: [['Суретті карточкалар', `<div class="task"><h3>Суретті тірек карточкалар</h3>${cards}</div>`], ['Қысқаша мазмұны', sumBox], ['Сөздік', `<div class="task"><h3>Терминдер сөздігі</h3>${dict}</div>`], ['Нұсқаулық', `<div class="task"><h3>Жазбаша қадамдық нұсқаулық</h3><ol class="steps">${steps.filter((x, k) => k !== 3).map(s => `<li><span>${esc(s)}</span></li>`).join('')}</ol></div>`], ['Сәйкестендіру', `<div class="task"><h3>Сәйкестендіру ойыны</h3><div id="inclMatch"></div></div>`], ['Себетке сал', basket], ['Видео', video], ['Сал да белгіле', drawBox], ['Артығын тап', oddBox]],
+    sen: [['Қысқаша мазмұны', sumBox], ['Сөздік карточкалар', `<div class="task"><h3>Сөздік карточкалар</h3>${dict}</div>`], ['Бос орын', clozeBox], ['Сәйкестендіру', `<div class="task"><h3>Сәйкестендіру ойыны</h3><div id="inclMatch"></div></div>`], ['Реттілік', L.ord ? `<div class="task"><h3>Ретімен орналастыр: «${esc(L.ord[0])}»</h3><div id="inclOrder"></div></div>` : ''], ['2 нұсқалы тест', `<div class="task"><h3>Жеңілдетілген тест (2 нұсқа)</h3>${two}</div>`], ['Себетке сал', basket], ['Сал да белгіле', drawBox], ['Артығын тап', oddBox]],
+    adhd: [['Иә/Жоқ', `<div class="task"><h3>Жылдам «Иә/Жоқ»</h3>${yn}</div>`], ['Сәйкестендіру', `<div class="task"><h3>Мини-ойын: сәйкестендір</h3><div id="inclMatch"></div></div>`], ['Себетке сал', basket], ['Артығын тап', oddBox], ['2 нұсқалы тест', `<div class="task"><h3>Жылдам тест</h3>${two}</div>`]],
+    gifted: [['С деңгейі', `<div class="task"><h3>С деңгейлі қосымша тапсырмалар</h3><ol>${[...(L.qs['Талдау'] || []), ...(L.qs['Синтез'] || []), ...(L.qs['Бағалау'] || [])].map(x => `<li>${esc(x)}</li>`).join('') || '<li>Тақырып бойынша өз зерттеу сұрағыңды құрастырып, жауабын дәлелде.</li>'}</ol></div>`], ['Пікірталас', (L.qs['Пікірталас'] || []).length ? `<div class="task"><h3>Пікірталас</h3><p>${esc(L.qs['Пікірталас'][0])}</p></div>` : ''], ['Кейс', `<div class="task"><h3>Кейсті күрделендір</h3><p>${esc(L.cs[0])}</p><p>Шешімді ғылыми дереккөзге сүйеніп дәлелде, балама шешім ұсын және оның тәуекелін бағала.</p></div>`], ['Мини-зерттеу', `<div class="task"><h3>Мини-зерттеу жобасы</h3><p>«${esc(L.title)}» тақырыбы бойынша гипотеза ұсын, тексеру әдісін жоспарла (не өлшейсің, қандай құрал керек) және 1 слайдтық қорытынды дайында.</p></div>`], ['Ассистент', `<div class="task"><h3>Ассистент рөлі</h3><p>Сыныптасыңа «${esc(L.tb[0])}» кестесін толтыруға көмектес: алдымен өзің толтыр, сосын түсіндіру жоспарын құр.</p></div>`], ['Тәжірибе', (typeof BENCH !== 'undefined' && BENCH[L.n]) ? `<div class="task"><h3>Тәжірибені күрделендір</h3><p>«${esc(BENCH[L.n].title)}» тәжірибесіне жаңа фактор қосып (уақыт, концентрация, температура), нәтижесін болжа және виртуалды зертханада тексер.</p></div>` : '']]
+  };
+  const pool = P[m].filter(x => x[1]), want = { visual: 4, hearing: 4, sen: 4, adhd: 2, gifted: 3 }[m], st = (hashStr(L.n) + i) % pool.length, chosen = Array.from({ length: Math.min(want, pool.length) }, (_, k) => pool[(st + k) % pool.length]);
+  const goalBox = `<div class="task" style="border-left:4px solid var(--ok)"><h3>Бүгінгі мақсатым ${voice ? sayBtn('Бүгінгі мақсатым: ' + L.goal) : ''}</h3><p class="${big}">${esc(L.goal)} <span class="note">(${esc(L.codes.join(', '))})</span></p></div>`;
+  let body = goalBox + (m === 'adhd' ? `<div class="task"><h3>Қысқа қадамдар (әрқайсысына 3 минут)</h3>
     <div style="height:10px;background:var(--soft);border-radius:6px;overflow:hidden;margin:6px 0 10px"><div id="adhdBar" style="height:100%;width:0;background:var(--ok);transition:width .3s"></div></div>
-    <ol class="steps">${steps.map((s, k) => `<li><label><input type="checkbox" data-step="${k}"> ${esc(s)}</label></li>`).join('')}</ol>
-    <p><button class="btn pri" type="button" id="tmrBtn">3 минуттық таймер</button> <span class="mono big" id="tmr">3:00</span></p><p class="note" id="adhdRes"></p></div>
-    <div class="task"><h3>Жылдам «Иә/Жоқ»</h3>${yn}</div>
-    <div class="task"><h3>Мини-ойын: сәйкестендір</h3><div id="inclMatch"></div></div>
-    ${inclTips(m)}`;
-  if (m === 'gifted') body = `<div class="task"><h3>С деңгейлі қосымша тапсырмалар</h3><ol>${[...(L.qs['Талдау'] || []), ...(L.qs['Синтез'] || []), ...(L.qs['Бағалау'] || [])].map(x => `<li>${esc(x)}</li>`).join('') || '<li>Тақырып бойынша өз зерттеу сұрағыңды құрастырып, жауабын дәлелде.</li>'}</ol></div>
-    ${(L.qs['Пікірталас'] || []).length ? `<div class="task"><h3>Пікірталас</h3><p>${esc(L.qs['Пікірталас'][0])}</p></div>` : ''}
-    <div class="task"><h3>Кейсті күрделендір</h3><p>${esc(L.cs[0])}</p><p>Жағдаяттың шешімін ғылыми дереккөзге сүйеніп дәлелде, балама шешім ұсын және оның тәуекелін бағала.</p></div>
-    <div class="task"><h3>Мини-зерттеу жобасы</h3><p>«${esc(L.title)}» тақырыбы бойынша гипотеза ұсын, оны тексеру әдісін жоспарла (не өлшейсің, қандай құрал керек, нәтижені қалай көрсетесің) және 1 слайдтық қорытынды дайында.</p></div>
-    <div class="task"><h3>Ассистент рөлі</h3><p>Сыныптасыңа «${esc(L.tb[0])}» кестесін толтыруға көмектес: алдымен өзің толтыр, сосын түсіндіру жоспарын құр.</p></div>
-    ${inclTips(m)}`;
+    <ol class="steps">${shuffle(steps, hashStr(L.n)).map((s, k) => `<li><label><input type="checkbox" data-step="${k}"> ${esc(s)}</label></li>`).join('')}</ol>
+    <p><button class="btn pri" type="button" id="tmrBtn">3 минуттық таймер</button> <span class="mono big" id="tmr">3:00</span></p><p class="note" id="adhdRes"></p></div>` : '') + chosen.map(x => x[1]).join('') + inclTips(m);
   return `<div class="sheet"><div class="lesson-head"><div><div class="eyebrow">Инклюзивті білім беру · ${GR}-сынып · ${i + 1}-сабақ</div><h2>${esc(lessonLabel(i))}</h2></div></div>
   <div class="incl-modes" role="group" aria-label="Оқушы санаты">${modes}</div>
   ${voice ? `<div class="task" style="margin-bottom:14px"><div class="filters" style="margin:0"><label>Оқу жылдамдығы <select id="ttsRate"><option value="0.7">Баяу</option><option value="0.9">Қалыпты</option><option value="1.1">Жылдам</option></select></label><button class="btn sm" type="button" id="ttsTest">🔊 Дауысты тексеру</button><button class="btn sm" type="button" id="ttsStopAll">⏹ Тоқтату</button></div><p class="note" id="ttsInfo" style="margin:6px 0 0">${esc(ttsInfo())}</p></div>` : ''}
@@ -956,6 +988,8 @@ function afterIncl(i) {
   const tt = $('#ttsTest'); if (tt) tt.onclick = () => speak(`Сәлеметсіз бе! Бүгінгі тақырып: ${L.title}.`, tt);
   const sa = $('#ttsStopAll'); if (sa) sa.onclick = ttsStop;
   $$('[data-yn]').forEach(b => b.addEventListener('click', () => { const j = +b.dataset.yn, ok = +b.dataset.v === L.tf[j][1]; $('#ynr' + j).textContent = ok ? '✔ Дұрыс! Жарайсың!' : '✘ Қайта ойланып көр.'; }));
+  $$('[data-bk]').forEach(b => b.addEventListener('click', () => { const j = +b.dataset.bk, ok = +b.dataset.v === L.tf[j][1]; $('#bkr' + j).textContent = ok ? '✔ Дұрыс себет!' : '✘ Басқа себетке сал.'; }));
+  $$('[data-odd]').forEach(b => b.addEventListener('click', () => { $('#oddR').textContent = b.dataset.odd === '1' ? '✔ Табылды! Бұл сөз басқа тақырыптан.' : '✘ Бұл сөз тақырыпқа қатысты. Тағы ізде.'; }));
   $$('[data-mq]').forEach(b => b.addEventListener('click', () => { const j = +b.dataset.mq, ok = +b.dataset.k === L.mc[j][2]; $('#mqr' + j).textContent = ok ? '✔ Дұрыс!' : '✘ Қате. Тағы бір рет тыңдап көр.'; }));
   $$('[data-t2]').forEach(b => b.addEventListener('click', () => { $('#t2r' + b.dataset.t2).textContent = b.dataset.ok === '1' ? '✔ Дұрыс! Жарайсың!' : '✘ Қайта ойлан.'; }));
   const cc = $('#czChk'); if (cc) cc.onclick = () => { const cz = cloze(L); let s = 0; $$('[data-cz]').forEach(sel => { const ok = sel.value === cz[+sel.dataset.cz].word; if (ok) s++; sel.style.borderColor = sel.value ? (ok ? 'var(--ok)' : 'var(--bad)') : ''; }); $('#czRes').textContent = `${s} / ${cz.length} дұрыс`; };
