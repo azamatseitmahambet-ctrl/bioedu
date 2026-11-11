@@ -433,7 +433,7 @@ function kmzhRows(L, i) {
     rows.push({ st: lb[0] === 'П' ? '(Т) Практикалық жұмыс' : `(Т) Зертханалық жұмыс №${lb[0]}`, t: '8 мин',
       te: `Сыныпты ${SPLIT[k % SPLIT.length]} арқылы 3 топқа бөледі. «${esc(lb[1])}» жұмысының нұсқаулығын береді${lb[2] ? ` (оқулық, ${lb[2]}-бет)` : ''}, қауіпсіздік ережесін еске салады. Құрал жетпесе, ${inner('lab', i, 'платформадағы виртуалды зертхананы')} пайдаланады.<br><b>1-топ:</b> тәжірибені орындап, нәтижені кестеге жазады.<br><b>2-топ:</b> бақылау нәтижесін суретке салып, бөліктерін белгілейді.<br><b>3-топ:</b> нәтижені талдап, қорытынды жасайды.`,
       sa: 'Топтар тәжірибені нұсқаулық бойынша орындайды, нәтижені тіркеп, қорытындысын қорғайды.',
-      as: `ҚБ: ${fb[0]}`, re: `Зертханалық құрал-жабдықтар; ${inner('lab', i, 'Виртуалды зертхана')}` });
+      as: `ҚБ: ${fb[0]}`, re: `Зертханалық құрал-жабдықтар; ${inner('lab', i, 'Виртуалды зертхана')}${(typeof xlabsFor === 'function' && xlabsFor(L)[0]) ? '<br>' + link(XLABS[xlabsFor(L)[0]][1] + ' (PhET)', xlabUrl(xlabsFor(L)[0], XLABS[xlabsFor(L)[0]][0])) : ''}` });
   } else {
     rows.push({ st: '(Т) Топтық жұмыс', t: '8 мин',
       te: `Сыныпты ${SPLIT[k % SPLIT.length]} арқылы 3 топқа бөледі. Тапсырма түрі: <b>${esc(L.gr[0])}</b>.<br><b>1-топ:</b> ${esc(L.gr[1])}<br><b>2-топ:</b> ${esc(L.gr[2])}<br><b>3-топ:</b> ${esc(L.gr[3])}`,
@@ -1669,15 +1669,65 @@ LAB.magnify = {
   }
 };
 
+/* ---------- сыртқы виртуалды зертханалар (PhET HTML5, тексерілген тілдер) ---------- */
+const XLABS = {
+  'natural-selection': ['kk', 'Табиғи сұрыпталу', 'Қояндарға мутация (жүн түсі, ұзын тіс, үлкен құлақ) қосып, қасқыр мен қорек әсерінен популяцияның ұрпақтар бойы өзгеруін графиктен бақыла.', /табиғи сұрып|эволюц|бейімдел|түр түзіл|түр және|селекция|сұрыпта|өзгергіштік|популяция|киік|мутация|тіршіліктің пайда/],
+  'neuron': ['kk', 'Нейрон', 'Нейронды тітіркендіріп, жүйке импульсінің аксон бойымен таралуын және Na⁺, K⁺ иондарының қозғалысын бақыла.', /нейрон|жүйке|рефлекс|импульс|электрлік үдеріс|нейрокомп|мінез-құлық|координация|рецептор|сезімтал/],
+  'gene-expression-essentials': ['kk', 'Тұқым әлпеті. Негіздер (ген экспрессиясы)', 'ДНҚ-дағы геннен иРНҚ мен нәруыздың қалай түзілетінін өз қолыңмен жинап көр.', /днқ|ген |гендер|генетик|нәруыз|белок|биотехнолог|инсулин|хромосома|тұқым қуала|тұқымқуала|мендель|аллель/],
+  'color-vision': ['kk', 'Түсті көру', 'Қызыл, жасыл, көк жарықты араластырып, көздің түстерді қалай қабылдайтынын зертте.', /көру|көз|түсті|соқыр дақ/],
+  'geometric-optics-basics': ['kk', 'Геометриялық оптика: Негіздері', 'Жинағыш линзадағы кескінді зертте: көз бұршағы мен микроскоп линзасы кескінді қалай түзеді.', /көз|көру|микроскоп|ұлғай|линза|жасуша, ұлпа|микрофото/],
+  'ph-scale': ['kk', 'pH шкаласы', 'Сілекей, асқазан сөлі, сүт сияқты ерітінділердің pH мәнін өлшеп, ферменттер жұмыс істейтін ортаны анықта.', /фермент|асқорыт|ас қорыт|қорыту|эмульгац|қышқыл|органикалық заттар/],
+  'greenhouse-effect': ['kk', 'Көшетхана (жылыжай) эффектісі', 'Парниктік газдардың мөлшерін өзгертіп, Жер температурасына әсерін бақыла.', /жылыжай|озон|климат|көміртек|ластан|экологиялық мәселе|адам әрекет|адам қызмет|пайдалы қазба|пестицид/],
+  'balancing-act': ['kk', 'Тепе-теңдік (иін)', 'Иінге жүк қойып, тепе-теңдік ережесін зертте; оны білек пен буындардағы иін принципіне қолдан.', /қаңқа|сүйек|буын|бұлшық|биомеханик|қозғалыс|тік жүр|тірек/],
+  'waves-intro': ['kk', 'Толқындар: Кіріспе', 'Дыбыс толқынының жиілігі мен амплитудасын өзгертіп, дыбыстың биіктігі мен қаттылығын зертте.', /құлақ|есту|дыбыс/],
+  'concentration': ['kk', 'Молярлық концентрация', 'Ерітіндіге зат қосып, суды буландырып, концентрацияның өзгерісін бақыла (осмос, бүйрек жұмысы, су-тұз балансы).', /осмос|концентрац|ерітінді|бүйрек|нефрон|зәр|бөліп шығар|тұз|ішкі орта|гомеостаз|тасымал/],
+  'diffusion': ['ru', 'Диффузия (орысша)', 'Бөлшектердің концентрация мен температураға байланысты диффузиясын бақыла (газ алмасу, заттардың тасымалы).', /диффуз|газ алмас|тасымал|мембрана|альвеол|флоэма|ксилема/],
+  'states-of-matter-basics': ['kk', 'Заттың агрегаттық күйлері', 'Судың қатты, сұйық және газ күйлеріндегі молекулалар қозғалысын температураға байланысты зертте.', /судың|транспирац|жылу реттел|дене температура|терінің/],
+  'gases-intro': ['kk', 'Газдар: Кіріспе', 'Көлем мен қысымның байланысын зертте: тыныс алғанда өкпе көлемі мен қысымы қалай өзгереді.', /тыныс|өкпе|газ /],
+  'energy-forms-and-changes': ['kk', 'Энергия пішіндері мен өзгерулері', 'Күн энергиясының басқа энергия түрлеріне айналуын бақыла (фотосинтез, қоректік тізбек, тыныс алу).', /энергия|фотосинтез|қоректік тізбек|пирамида|экожүйе|қоректену|аэробты|анаэробты|ашу/]
+};
+const xlabUrl = (id, lang) => `https://phet.colorado.edu/sims/html/${id}/latest/${id}_${lang}.html`;
+/* Әр тақырыпқа қолмен таңдалған симуляциялар. Қысқартулар: NS табиғи сұрыпталу, NE нейрон, GE ген экспрессиясы, CV түсті көру, GO оптика,
+   PH pH шкаласы, GH жылыжай эффектісі, BA тепе-теңдік (иін), WA толқындар, CO концентрация, DI диффузия, SM заттың күйлері, GA газдар, EN энергия */
+const XK = { NS: 'natural-selection', NE: 'neuron', GE: 'gene-expression-essentials', CV: 'color-vision', GO: 'geometric-optics-basics', PH: 'ph-scale', GH: 'greenhouse-effect', BA: 'balancing-act', WA: 'waves-intro', CO: 'concentration', DI: 'diffusion', SM: 'states-of-matter-basics', GA: 'gases-intro', EN: 'energy-forms-and-changes' };
+const XMAP = {
+  '7': { t1: 'GH', t2: 'EN', t3: 'EN', t4: 'GH EN', t5: 'GH CO', t7: 'NS', t11: 'GO', t12: 'SM CO', t14: 'CO', t15: 'CO DI', t16: 'CO', t17: 'DI CO', t18: 'DI',
+    t19: 'GO DI', t20: 'EN', t21: 'EN GA', t22: 'GA EN', t23: 'GA DI', t24: 'GA DI', t25: 'GA', t26: 'CO', t27: 'CO SM', t28: 'CO', t30: 'BA',
+    t31: 'NE', t32: 'NE', t33: 'NE', t34: 'NE', t35: 'NE', t36: 'NE', t37: 'NE', t38: 'NE', t39: 'NS GE', t40: 'GE', t46: 'GO', t47: 'PH CO', t48: 'NS', t49: 'GE' },
+  '8': { 1: 'GO', 2: 'GO', 3: 'GE', 4: 'EN', 5: 'GE', 10: 'PH', 11: 'PH', 12: 'PH', 13: 'PH', 16: 'CO', 17: 'DI', 23: 'DI', 25: 'DI GA', 26: 'GA', 27: 'GA',
+    28: 'CO', 29: 'SM CO', 31: 'BA', 32: 'BA', 33: 'BA', 34: 'BA', 35: 'BA NE', 36: 'BA', 37: 'BA', 38: 'GO CV', 39: 'WA', 40: 'CV WA', 43: 'NE', 44: 'SM EN',
+    45: 'GE', 46: 'NS', 50: 'NS GE', 51: 'NS', 52: 'NS', 53: 'NS', 54: 'EN', 55: 'NS', 56: 'NS', 57: 'NS', 58: 'NS', 59: 'GH', 60: 'GH CO', m1: 'PH', m2: 'EN GA' },
+  '9': { u1: 'GO GE', u2: 'GO', u4: 'NS', u5: 'EN', u6: 'GH EN', u7: 'GH', u8: 'CO', u9: 'GH', u10: 'PH', u11: 'PH', u12: 'PH', u13: 'DI CO', u14: 'SM DI', u15: 'DI CO',
+    u16: 'EN GA', u17: 'EN BA', u18: 'CO', u19: 'CO', u20: 'CO', u21: 'CO', u22: 'NE', u23: 'NE', u24: 'NE', u25: 'GA NE', u26: 'NE', u27: 'SM CO', u29: 'BA',
+    u30: 'GE', u31: 'GE', u34: 'NS', u35: 'NS', u36: 'NS', u39: 'NS', u41: 'GE', u48: 'NS', u49: 'NS', u50: 'NS', u51: 'NS' }
+};
+function xlabsFor(L) {
+  if (L.pool) { const c = {}; L.pool.forEach(P => xlabsFor(P).forEach(id => c[id] = (c[id] || 0) + 1)); return Object.entries(c).sort((a, b) => b[1] - a[1]).slice(0, 3).map(x => x[0]); }
+  const n = String(L.n), g = /^t\d/.test(n) ? '7' : /^u\d/.test(n) ? '9' : '8';
+  const v = (XMAP[g] || {})[n];
+  return v ? v.split(' ').map(k => XK[k]) : [];
+}
+function xlabsHTML(L) {
+  const ids = xlabsFor(L);
+  const yt = 'https://www.youtube.com/results?search_query=' + encodeURIComponent('зертханалық жұмыс ' + L.title.replace(/\(практикалық жұмыс\)/, '').trim());
+  const ytru = 'https://www.youtube.com/results?search_query=' + encodeURIComponent('виртуальная лабораторная работа биология ' + GR + ' класс');
+  return `<div class="sheet"><h3>Тақырыпқа сай виртуалды зертханалар (интернетте ашылады)</h3>
+   <p class="note">Тегін PhET симуляциялары, тіркелусіз браузерде ашылады. Қазақша нұсқасы бар болса қазақша, жоқ болса орысша сілтеме берілген. Тапсырманы оқушы жұмыс парағына орындайды.</p>
+   ${ids.length ? `<div class="cards" style="grid-template-columns:repeat(auto-fill,minmax(240px,1fr))">${ids.map(id => { const x = XLABS[id]; return `<div class="card" style="text-align:left;display:grid;gap:6px;align-content:start"><b>${esc(x[1])}</b><span class="chip ${x[0] === 'kk' ? 'a' : 'b'}" style="justify-self:start">${x[0] === 'kk' ? 'қазақша' : 'орысша'}</span><span class="note">Тапсырма: ${esc(x[2])}</span>${link('▶ Зертхананы ашу', xlabUrl(id, x[0]))}</div>`; }).join('')}</div>`
+     : '<p>Бұл тақырыпқа сай тегін сыртқы симуляция табылмады. Жоғарыдағы BioEdu зертханасын пайдаланыңыз.</p>'}
+   <div class="ext">${link('YouTube: «зертханалық жұмыс» (қазақша видео-тәжірибелер)', yt)}${link('YouTube: виртуальная лабораторная работа (орысша)', ytru)}</div></div>`;
+}
+
 /* ---------- lab page ---------- */
 function keyOf(L) { return KEYS[L.n] || L.key; }
 function bookLabs() { return Object.values(D.lessons).flatMap(L => (L.labs || []).map(l => [l, L])); }
 function engineFor(L) { if (L.lab === 'key' && !keyOf(L)) return 'sort'; if (L.lab === 'order' && !L.ord) return 'sort'; return LAB[L.lab] ? L.lab : 'sort'; }
 function renderLab(i) {
   const L = getL(i), en = engineFor(L), E = LAB[en];
-  return `<div class="sheet"><div class="lesson-head"><div><div class="eyebrow">Виртуалды зертхана · ${i + 1}-сабақ</div><h2>${esc(E.title)}</h2><p class="note">${esc(lessonLabel(i))}</p></div></div>
+  return `<div class="sheet"><div class="lesson-head"><div><div class="eyebrow">Виртуалды зертхана · ${GR}-сынып · ${i + 1}-сабақ</div><h2>${esc(E.title)}</h2><p class="note">${esc(lessonLabel(i))}</p></div></div>
    ${E.html(L)}
    <div class="ext">${extLinks(L).filter(x => !/Wordwall|Quizizz|Өз видеоңыз/.test(x[0])).map(([t, u]) => link(t, u)).join('')}</div></div>
+   ${xlabsHTML(L)}
    ${bookLabs().length ? `<div class="sheet"><h3>Оқулықтағы ${bookLabs().length} зертханалық жұмыс</h3><ul>${bookLabs().map(([l, LL]) => { const si = SEQ.findIndex(s => s.ref === String(LL.n)); return `<li>№${l[0]}. ${inner('lab', si, l[1])} <span class="note">(§${LL.n}, ${l[2]}-бет)</span></li>`; }).join('')}</ul></div>` : ''}`;
 }
 function afterLab(i) { const L = getL(i), en = engineFor(L); if (LAB[en].init) LAB[en].init(L); }
