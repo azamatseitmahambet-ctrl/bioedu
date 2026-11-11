@@ -646,53 +646,181 @@ function afterTasks() {
 let INCL = 'visual';
 const INCL_M = { visual: 'Көруі нашар', hearing: 'Естуі нашар', sen: 'Оқуда қиналатын (ЕБҚ)', adhd: 'Зейіні тұрақсыз', gifted: 'Дарынды оқушы' };
 function simple(L) { const s = (L.intro || L.goal).split(/(?<=[.!?])\s+/).filter(x => x.length > 20).slice(0, 3).join(' '); return s || L.goal; }
-function speak(t) { try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(t); u.lang = 'kk-KZ'; u.rate = .9; const v = speechSynthesis.getVoices().find(v => /kk|kaz/i.test(v.lang)) || speechSynthesis.getVoices().find(v => /ru/i.test(v.lang)); if (v) u.voice = v; speechSynthesis.speak(u); } catch (e) { toast('Бұл браузерде дауыстап оқу қолжетімсіз'); } }
-function cloze(L) {
-  return L.tf.filter(x => x[1]).concat(L.mc.map(m => [m[0].replace(/:$/, '') + ' – ' + m[1][m[2]], 1])).slice(0, 3).map(([s]) => {
-    const w = s.replace(/[«»().,–:]/g, ' ').split(/\s+/).filter(x => x.length > 4).sort((a, b) => b.length - a.length)[0] || s.split(' ')[0];
-    return { text: s.replace(w, '______'), word: w };
+
+/* text-to-speech («Тыңдау» батырмасы) */
+const TTS = { voices: [], rate: 0.9, btn: null, gen: 0, started: 0 };
+function ttsOK() { return 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window; }
+function ttsLoad() { try { TTS.voices = speechSynthesis.getVoices() || []; } catch (e) { TTS.voices = []; } }
+if (ttsOK()) { ttsLoad(); try { speechSynthesis.addEventListener('voiceschanged', () => { ttsLoad(); const el = $('#ttsInfo'); if (el) el.textContent = ttsInfo(); }); } catch (e) {} }
+function ttsVoice() { const v = TTS.voices; return v.find(x => /^kk/i.test(x.lang)) || v.find(x => /kazakh|қазақ/i.test(x.name)) || v.find(x => /^ru/i.test(x.lang)) || v.find(x => /^tr/i.test(x.lang)) || v.find(x => x.default) || v[0] || null; }
+function ttsInfo() {
+  if (!ttsOK()) return 'Бұл браузер дауыстап оқуды қолдамайды. Chrome, Edge немесе Safari арқылы ашыңыз.';
+  const v = ttsVoice();
+  if (!v) return 'Дауыс құрылғыдан жүктелуде. «Тыңдау» батырмасын басыңыз.';
+  return /^kk/i.test(v.lang) ? `Дауыс: ${v.name} (қазақша)` : `Дауыс: ${v.name} (${v.lang}). Құрылғыда қазақ дауысы жоқ, сондықтан жақын дауыспен оқылады. Windows-та Microsoft Edge браузерінде қазақша дауыстар (Aigul, Daulet) бар.`;
+}
+function ttsChunks(t) {
+  const out = []; let cur = '';
+  for (const s of String(t).replace(/\s+/g, ' ').trim().split(/(?<=[.!?;:])\s+/)) {
+    if (cur && (cur + ' ' + s).length > 180) { out.push(cur); cur = s; } else cur = cur ? cur + ' ' + s : s;
+  }
+  if (cur) out.push(cur);
+  return out.flatMap(c => c.length > 220 ? (c.match(/.{1,200}(\s|$)/g) || [c]) : [c]);
+}
+function ttsSet(btn, on) {
+  if (!btn || !btn.isConnected) return;
+  if (!btn.dataset.label) btn.dataset.label = btn.innerHTML;
+  btn.innerHTML = on ? '⏹ Тоқтату' : btn.dataset.label;
+  btn.classList.toggle('pri', on); btn.setAttribute('aria-pressed', String(on));
+}
+function ttsStop() { TTS.gen++; try { if (ttsOK()) speechSynthesis.cancel(); } catch (e) {} ttsSet(TTS.btn, false); TTS.btn = null; }
+function speak(text, btn) {
+  if (!ttsOK()) { toast('Бұл браузер дауыстап оқуды қолдамайды. Chrome, Edge немесе Safari арқылы ашыңыз.'); return; }
+  const same = TTS.btn && TTS.btn === btn; ttsStop(); if (same) return;
+  ttsLoad();
+  const v = ttsVoice(), parts = ttsChunks(text), gen = TTS.gen; let k = 0;
+  if (!parts.length) return;
+  TTS.btn = btn; ttsSet(btn, true);
+  const next = () => {
+    if (gen !== TTS.gen) return;
+    if (k >= parts.length) { ttsSet(btn, false); if (TTS.btn === btn) TTS.btn = null; return; }
+    const u = new SpeechSynthesisUtterance(parts[k++]);
+    if (v) { u.voice = v; u.lang = v.lang; } else u.lang = 'kk-KZ';
+    u.rate = TTS.rate; u.pitch = 1; u.volume = 1;
+    u.onstart = () => { TTS.started = gen; };
+    u.onend = next;
+    u.onerror = e => { if (gen !== TTS.gen) return; ttsSet(btn, false); TTS.btn = null; if (!/interrupted|canceled/.test(e.error || '')) toast('Дыбыс ойнатылмады (' + (e.error || 'қате') + '). Құрылғының дыбысын тексеріңіз.'); };
+    speechSynthesis.speak(u);
+  };
+  try { speechSynthesis.resume(); } catch (e) {}
+  next();
+  setTimeout(() => {
+    if (gen === TTS.gen && TTS.started !== gen && !speechSynthesis.speaking) {
+      ttsSet(btn, false); TTS.btn = null;
+      toast('Дауыс іске қосылмады. Құрылғының дыбысы қосулы ма және «Мәтінді дауыстап оқу» (TTS) қызметі орнатылған ба, тексеріңіз.');
+    }
+  }, 3000);
+}
+const sayBtn = (t, label = '🔊 Тыңдау') => `<button class="btn sm" type="button" data-say="${esc(t)}">${label}</button>`;
+
+/* interactive helpers */
+function mountMatch(box, pairs, seed) {
+  if (!box || pairs.length < 2) { if (box) box.innerHTML = '<p class="note">Бұл тақырыпқа сәйкестендіру жұптары жоқ.</p>'; return; }
+  const R = shuffle(pairs.map((p, k) => [k, p[1]]), seed); let sel = null, done = 0, err = 0;
+  box.innerHTML = `<div class="match">${pairs.map((p, k) => `<button type="button" data-l="${k}">${esc(p[0])}</button><button type="button" data-r="${R[k][0]}">${esc(R[k][1])}</button>`).join('')}</div><p class="note" data-res></p>`;
+  $$('[data-l]', box).forEach(b => b.onclick = () => { if (b.classList.contains('done')) return; $$('[data-l]', box).forEach(x => x.classList.remove('sel')); b.classList.add('sel'); sel = b; });
+  $$('[data-r]', box).forEach(b => b.onclick = () => {
+    if (!sel || b.classList.contains('done')) return;
+    if (b.dataset.r === sel.dataset.l) { b.className = 'done'; sel.className = 'done'; sel = null; if (++done === pairs.length) $('[data-res]', box).textContent = `Жарайсың! Барлық жұп табылды. Қате саны: ${err}.`; }
+    else { err++; b.classList.add('err'); setTimeout(() => b.classList.remove('err'), 600); }
   });
 }
+function mountOrder(box, right, seed) {
+  let cur = shuffle(right, seed), st = null;
+  const draw = () => {
+    box.innerHTML = `<ol class="ord">${cur.map((x, k) => `<li class="${st ? (st[k] ? 'ok' : 'no') : ''}"><span>${esc(x)}</span><button class="btn sm" type="button" data-u="${k}" aria-label="Жоғары">↑</button><button class="btn sm" type="button" data-d="${k}" aria-label="Төмен">↓</button></li>`).join('')}</ol>
+      <div class="actions" style="margin-top:8px"><button class="btn pri sm" type="button" data-chk>Тексеру</button></div><p class="note" data-res></p>`;
+    $$('[data-u]', box).forEach(b => b.onclick = () => { const k = +b.dataset.u; if (k > 0) { [cur[k - 1], cur[k]] = [cur[k], cur[k - 1]]; st = null; draw(); } });
+    $$('[data-d]', box).forEach(b => b.onclick = () => { const k = +b.dataset.d; if (k < cur.length - 1) { [cur[k + 1], cur[k]] = [cur[k], cur[k + 1]]; st = null; draw(); } });
+    $('[data-chk]', box).onclick = () => { st = cur.map((x, k) => x === right[k]); const n = st.filter(Boolean).length; draw(); $('[data-res]', box).textContent = n === right.length ? 'Керемет! Реттілік дұрыс.' : `${n} / ${right.length} орында дұрыс. Қызылдарын жылжытып көр.`; };
+  };
+  draw();
+}
+function cloze(L) {
+  const src = L.tf.filter(x => x[1]).map(x => x[0]).concat(L.mc.map(m => m[0].replace(/:$/, '') + ' – ' + m[1][m[2]]));
+  return src.slice(0, 4).map(s => {
+    const w = s.replace(/[«»().,–:;!?]/g, ' ').split(/\s+/).filter(x => x.length > 4).sort((a, b) => b.length - a.length)[0] || s.split(' ')[0];
+    return { text: s.replace(w, '______'), word: w, full: s };
+  });
+}
+function oralQs(L) { return [...splitQs(L.recall), ...(L.qs['Білу және түсіну'] || [])].filter((x, k, a) => a.indexOf(x) === k).slice(0, 5); }
+function inclTips(m) {
+  const T = {
+    visual: ['Шрифт кемі 18–22 pt, контраст жоғары, парақ жылтыр емес.', 'Тапсырманы 🔊 батырмасымен немесе мұғалім дауыстап оқиды.', 'Модельдерді, муляждарды, бедерлі суреттерді қолмен ұстап зерттеуге береді.', 'Жауапты ауызша қабылдайды, уақытты 1,5 есе арттырады.'],
+    hearing: ['Видеоны субтитрмен көрсетеді (YouTube «CC» батырмасы).', 'Әр нұсқауды тақтаға жазып, суретпен көрсетеді.', 'Оқушыны мұғалімнің бетін анық көретін алдыңғы партаға отырғызады.', 'Жаңа терминдерді жазбаша сөздік ретінде береді.'],
+    sen: ['Мәтінді қысқа сөйлемдерге бөліп, тірек сөздерді түспен белгілейді.', 'Бір мезетте бір тапсырма береді, үлгісін көрсетеді.', 'Таңдау нұсқаларын 2-ге дейін азайтады.', 'Әр дұрыс қадамды бірден мадақтайды.'],
+    adhd: ['Тапсырманы 3 минуттық бөліктерге бөледі.', 'Қозғалыс үзілісін береді (тақтаға шығу, карточка тарату).', 'Тексеру парағы (чек-лист) арқылы прогресті көрсетеді.', 'Жетістікті бірден мадақтайды (стикер, белгі).'],
+    gifted: ['Зерттеушілік және жобалық тапсырма береді.', 'Сыныптастарына кеңесші (ассистент) рөлін ұсынады.', 'Қосымша ғылыми дереккөздермен жұмыс істеуге бағыттайды.', 'Нәтижесін сынып алдында қорғауға мүмкіндік береді.']
+  };
+  return `<div class="task"><h3>Мұғалімге ұсынымдар</h3><ul>${T[m].map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>`;
+}
 function renderIncl(i) {
-  const L = getL(i), m = INCL;
+  const L = getL(i), m = INCL, big = m === 'visual' ? 'big' : '', voice = m === 'visual' || m === 'sen';
   const modes = Object.entries(INCL_M).map(([k, v]) => `<button type="button" data-m="${k}" aria-pressed="${k === m}">${v}</button>`).join('');
+  const pairs = matchPairs(L);
   const cards = `<div class="cards">${L.c.map(c => { const [e, ...w] = c.split(' '); return `<div class="card"><i aria-hidden="true">${esc(e)}</i>${esc(w.join(' '))}</div>`; }).join('')}</div>`;
-  const yn = L.tf.map((x, j) => `<div class="task"><p class="${m === 'visual' ? 'big' : ''}">${esc(x[0])} ${m === 'visual' ? `<button class="btn sm" type="button" data-say="${esc(x[0])}">🔊</button>` : ''}</p><div class="yn"><button type="button" data-yn="${j}" data-v="1">✅ Иә</button><button type="button" data-yn="${j}" data-v="0">❌ Жоқ</button></div><span class="note" id="ynr${j}"></span></div>`).join('');
-  const cz = cloze(L);
-  const bank = shuffle(cz.map(c => c.word), hashStr(L.n));
+  const yn = L.tf.map((x, j) => `<div class="task"><p class="${big}">${j + 1}. ${esc(x[0])} ${voice ? sayBtn(x[0], '🔊') : ''}</p><div class="yn"><button type="button" data-yn="${j}" data-v="1">✅ Иә</button><button type="button" data-yn="${j}" data-v="0">❌ Жоқ</button></div><span class="note" id="ynr${j}"></span></div>`).join('');
+  const sum = simple(L);
+  const sumBox = `<div class="task"><h3>Қысқаша мазмұны ${voice ? sayBtn(sum) : ''}</h3><p class="${big}">${esc(sum)}</p></div>`;
+  const termsTxt = 'Тірек сөздер: ' + L.terms.join(', ') + '.';
+  const termsBox = `<div class="task"><h3>Тірек сөздер ${voice ? sayBtn(termsTxt) : ''}</h3><div class="bank">${L.terms.map(t => `<span class="${big}" style="${m === 'visual' ? 'font-size:20px' : ''}">${esc(t)}</span>`).join('')}</div></div>`;
+  const dict = `<div class="cards">${pairs.map(p => `<div class="card" style="text-align:left"><b>${esc(p[0])}</b><br><span class="note">${esc(p[1])}</span>${voice ? `<div style="margin-top:6px">${sayBtn(p[0] + ' – ' + p[1], '🔊')}</div>` : ''}</div>`).join('')}</div>`;
+  const mcOral = L.mc.map((q, j) => { const said = `${q[0]} ${q[1].map((o, k) => 'АБВГ'[k] + ') ' + o).join('. ')}.`; return `<div class="task"><p class="${big}"><b>${j + 1}. ${esc(q[0])}</b> ${voice ? sayBtn(said, '🔊') : ''}</p><div class="yn">${q[1].map((o, k) => `<button type="button" data-mq="${j}" data-k="${k}" style="font-size:${m === 'visual' ? 20 : 16}px">${'АБВГ'[k]}) ${esc(o)}</button>`).join('')}</div><span class="note" id="mqr${j}"></span></div>`; }).join('');
+  const two = L.mc.map((q, j) => { const wrong = q[1].find((o, k) => k !== q[2]); const opts = shuffle([q[1][q[2]], wrong], hashStr(L.n) + j); return `<div class="task"><p><b>${j + 1}. ${esc(q[0])}</b> ${sayBtn(q[0] + ' ' + opts.join(' немесе ') + '?', '🔊')}</p><div class="yn">${opts.map(o => `<button type="button" data-t2="${j}" data-ok="${o === q[1][q[2]] ? 1 : 0}">${esc(o)}</button>`).join('')}</div><span class="note" id="t2r${j}"></span></div>`; }).join('');
+  const cz = cloze(L), bank = shuffle(cz.map(c => c.word), hashStr(L.n) + 7);
+  const clozeBox = `<div class="task"><h3>Бос орынды толтыр (сөздер берілген)</h3>${cz.map((c, j) => `<p style="font-size:18px">${j + 1}. ${esc(c.text).replace('______', `<select data-cz="${j}" aria-label="${j + 1}-бос орын"><option value="">— таңда —</option>${bank.map(w => `<option>${esc(w)}</option>`).join('')}</select>`)} ${sayBtn(c.full, '🔊')}</p>`).join('')}<button class="btn pri sm" type="button" id="czChk">Тексеру</button> <span class="note" id="czRes"></span></div>`;
+  const steps = [
+    `Тірек сөздерді дәптерге жаз: ${L.terms.slice(0, 4).join(', ')}.`,
+    `Суреттерге қара (${L.c.map(c => c.split(' ').slice(1).join(' ')).join(', ')}) және олардың тақырыпқа байланысын бір сөйлеммен айт.`,
+    `«Иә/Жоқ» тапсырмасына жауап бер (3 тұжырым).`,
+    `Сергіту: орныңнан тұрып, 5 рет созыл, 5 рет терең тыныс ал.`,
+    `Тест: ${L.mc[0][0]}`,
+    `Кестенің бір жолын толтыр: «${L.tb[0]}» – «${L.tb[2][0]}».`];
   let body = '';
-  const sumBox = `<div class="task"><h3>Қысқаша мазмұны ${m === 'visual' || m === 'sen' ? `<button class="btn sm" type="button" data-say="${esc(simple(L))}">🔊 Тыңдау</button>` : ''}</h3><p class="${m === 'visual' ? 'big' : ''}">${esc(simple(L))}</p></div>`;
-  if (m === 'visual') body = `${sumBox}<div class="task"><h3>Ірі шрифтті «Иә/Жоқ» тапсырмасы (дауыстап оқылады)</h3>${yn}</div>
-    <div class="task"><h3>Ұсынымдар</h3><ul><li>Шрифт – кемі 18–22 pt, контраст жоғары, парақ матовый.</li><li>Тапсырманы дауыстап оқу (🔊 батырмасы) немесе аудиожазба.</li><li>Модельдерді, муляждарды қолмен ұстап зерттеуге беру; суретті сипаттап айтып беру.</li><li>Тестті ауызша тапсыруға рұқсат беру, уақытты 1,5 есе арттыру.</li></ul></div>`;
+  if (m === 'visual') body = `${sumBox}${termsBox}
+    <div class="task"><h3>Ауызша сұрақтар (оқушы ауызша жауап береді)</h3><ol>${oralQs(L).map(q => `<li class="big">${esc(q)} ${sayBtn(q, '🔊')}</li>`).join('')}</ol></div>
+    <div class="task"><h3>Ірі шрифтті «Иә/Жоқ»</h3>${yn}</div>
+    <div class="task"><h3>Ауызша тест (сұрақ пен жауап нұсқалары дауыстап оқылады)</h3>${mcOral}</div>
+    <div class="task"><h3>Қолмен зерттеу тапсырмасы</h3><p class="big">Топтық тапсырманы бедерлі (рельефті) материалмен орында: ${esc(L.gr[1])}. Пластилин, жіп, картон немесе муляжды пайдалан, бөліктерін саусақпен тауып, атын айт.</p></div>
+    ${inclTips(m)}`;
   if (m === 'hearing') body = `<div class="task"><h3>Суретті тірек карточкалар</h3>${cards}</div>${sumBox}
-    <div class="task"><h3>Жазбаша қадамдық нұсқаулық</h3><ol class="steps"><li><span>Тірек сөздерді оқы: ${L.terms.slice(0, 5).map(esc).join(', ')}.</span></li><li><span>Суреттерге қарап, тақырыпқа байланысын жаз.</span></li><li><span>«Иә/Жоқ» тапсырмасын орында.</span></li><li><span>Кестенің бірінші жолын толтыр: «${esc(L.tb[2][0])}».</span></li></ol></div>
+    <div class="task"><h3>Терминдер сөздігі</h3>${dict}</div>
+    <div class="task"><h3>Жазбаша қадамдық нұсқаулық</h3><ol class="steps">${steps.filter((x, k) => k !== 3).map(s => `<li><span>${esc(s)}</span></li>`).join('')}</ol></div>
+    <div class="task"><h3>Сәйкестендіру ойыны</h3><p class="note">Сол жақтағы ұғымды, сосын оның анықтамасын бас.</p><div id="inclMatch"></div></div>
     <div class="task"><h3>«Иә/Жоқ»</h3>${yn}</div>
-    <div class="task"><h3>Ұсынымдар</h3><ul><li>Видеоны субтитрмен көрсету (YouTube «CC» батырмасы).</li><li>Нұсқауды тақтаға жазып, сурет-белгілермен көрсету.</li><li>Оқушыны алдыңғы партаға, мұғалімнің бетін көретін жерге отырғызу.</li><li>Жаңа терминдерді жазбаша сөздік ретінде беру.</li></ul></div>`;
-  if (m === 'sen') body = `${sumBox}<div class="task"><h3>Бос орынды толтыр (сөздер берілген)</h3><div class="bank">${bank.map(w => `<span>${esc(w)}</span>`).join('')}</div><ol>${cz.map(c => `<li class="big" style="font-size:18px">${esc(c.text)}</li>`).join('')}</ol><p class="note ans" hidden>Жауабы: ${cz.map(c => esc(c.word)).join(', ')}</p><button class="btn sm" type="button" data-showans>Жауабын көрсету</button></div>
-    <div class="task"><h3>Сөз бен суретті сәйкестендір</h3>${cards}<p class="note">Карточкалардағы суреттерді атауымен қиып, оқушыға жұптастыруға береміз.</p></div>
-    <div class="task"><h3>Жеңілдетілген тест (2 нұсқа)</h3>${L.mc.map((mm, j) => { const wrong = mm[1].find((o, k) => k !== mm[2]); const opts = shuffle([mm[1][mm[2]], wrong], j + 3); return `<p><b>${j + 1}. ${esc(mm[0])}</b><br>${opts.map(o => `☐ ${esc(o)}`).join(' &nbsp; ')}</p>`; }).join('')}</div>`;
-  if (m === 'adhd') body = `<div class="task"><h3>Қысқа қадамдар + таймер</h3><p>Әр қадамға 3 минут. Орындаған соң белгі қой.</p><ol class="steps">
-    <li><label><input type="checkbox"> Тірек сөздерді дәптерге жаз: ${L.terms.slice(0, 4).map(esc).join(', ')}</label></li>
-    <li><label><input type="checkbox"> «Иә/Жоқ» тапсырмасына жауап бер (3 тұжырым).</label></li>
-    <li><label><input type="checkbox"> Тесттің 1-сұрағына жауап бер: ${esc(L.mc[0][0])}</label></li>
-    <li><label><input type="checkbox"> Сергіту: орныңнан тұрып, 5 рет созыл.</label></li>
-    <li><label><input type="checkbox"> Кестенің бір жолын толтыр: «${esc(L.tb[2][0])}».</label></li></ol>
-    <p><button class="btn pri" type="button" id="tmrBtn">3 минуттық таймер</button> <span class="mono big" id="tmr">3:00</span></p></div>
-    <div class="task"><h3>«Иә/Жоқ»</h3>${yn}</div>
-    <div class="task"><h3>Ұсынымдар</h3><ul><li>Тапсырманы бөлшектеп, бір мезетте бір нұсқау беру.</li><li>Қозғалыс үзілістері (тақтаға шығу, карточка тарату).</li><li>Жетістікті бірден мадақтау (стикер, белгі).</li></ul></div>`;
-  if (m === 'gifted') body = `<div class="task"><h3>С деңгейлі қосымша тапсырмалар</h3><ol>${[...(L.qs['Синтез'] || []), ...(L.qs['Бағалау'] || [])].map(x => `<li>${esc(x)}</li>`).join('') || '<li>Тақырып бойынша өз зерттеу сұрағыңды құрастырып, жауабын дәлелде.</li>'}</ol></div>
+    <div class="task"><h3>Видеоны субтитрмен көру</h3><p>${link('YouTube-тан видеосабақ табу', S.video[String(L.n)] || yt(L))}. Видеоны ашып, «CC» (субтитр) батырмасын қос. Көріп болған соң жаз:</p><ol>${(L.qs['Білу және түсіну'] || L.mc.map(q => q[0])).slice(0, 2).map(q => `<li>${esc(q)}</li>`).join('')}</ol></div>
+    ${inclTips(m)}`;
+  if (m === 'sen') body = `${sumBox}
+    <div class="task"><h3>Сөздік карточкалар</h3>${dict}</div>
+    ${clozeBox}
+    <div class="task"><h3>Сәйкестендіру ойыны</h3><p class="note">Ұғымды, сосын оның сипаттамасын бас.</p><div id="inclMatch"></div></div>
+    ${L.ord ? `<div class="task"><h3>Ретімен орналастыр: «${esc(L.ord[0])}»</h3><div id="inclOrder"></div></div>` : ''}
+    <div class="task"><h3>Жеңілдетілген тест (2 нұсқа)</h3>${two}</div>
+    <div class="task"><h3>Суреттермен жұмыс</h3>${cards}<p class="note">Карточкаларды қиып, суретті атауымен жұптастыруға береміз.</p></div>
+    ${inclTips(m)}`;
+  if (m === 'adhd') body = `<div class="task"><h3>Қысқа қадамдар (әрқайсысына 3 минут)</h3>
+    <div style="height:10px;background:var(--soft);border-radius:6px;overflow:hidden;margin:6px 0 10px"><div id="adhdBar" style="height:100%;width:0;background:var(--ok);transition:width .3s"></div></div>
+    <ol class="steps">${steps.map((s, k) => `<li><label><input type="checkbox" data-step="${k}"> ${esc(s)}</label></li>`).join('')}</ol>
+    <p><button class="btn pri" type="button" id="tmrBtn">3 минуттық таймер</button> <span class="mono big" id="tmr">3:00</span></p><p class="note" id="adhdRes"></p></div>
+    <div class="task"><h3>Жылдам «Иә/Жоқ»</h3>${yn}</div>
+    <div class="task"><h3>Мини-ойын: сәйкестендір</h3><div id="inclMatch"></div></div>
+    ${inclTips(m)}`;
+  if (m === 'gifted') body = `<div class="task"><h3>С деңгейлі қосымша тапсырмалар</h3><ol>${[...(L.qs['Талдау'] || []), ...(L.qs['Синтез'] || []), ...(L.qs['Бағалау'] || [])].map(x => `<li>${esc(x)}</li>`).join('') || '<li>Тақырып бойынша өз зерттеу сұрағыңды құрастырып, жауабын дәлелде.</li>'}</ol></div>
     ${(L.qs['Пікірталас'] || []).length ? `<div class="task"><h3>Пікірталас</h3><p>${esc(L.qs['Пікірталас'][0])}</p></div>` : ''}
-    <div class="task"><h3>Мини-зерттеу жобасы</h3><p>«${esc(L.title)}» тақырыбы бойынша гипотеза ұсын, оны тексеру әдісін жоспарла (не өлшейсің, қандай құрал керек, нәтижені қалай көрсетесің) және 1 слайдтық қорытынды дайында.</p></div>`;
-  return `<div class="sheet"><div class="lesson-head"><div><div class="eyebrow">Инклюзивті білім беру · ${i + 1}-сабақ</div><h2>${esc(lessonLabel(i))}</h2></div></div>
-  <div class="incl-modes" role="group" aria-label="Оқушы санаты">${modes}</div><div class="ws">${body}</div></div>`;
+    <div class="task"><h3>Кейсті күрделендір</h3><p>${esc(L.cs[0])}</p><p>Жағдаяттың шешімін ғылыми дереккөзге сүйеніп дәлелде, балама шешім ұсын және оның тәуекелін бағала.</p></div>
+    <div class="task"><h3>Мини-зерттеу жобасы</h3><p>«${esc(L.title)}» тақырыбы бойынша гипотеза ұсын, оны тексеру әдісін жоспарла (не өлшейсің, қандай құрал керек, нәтижені қалай көрсетесің) және 1 слайдтық қорытынды дайында.</p></div>
+    <div class="task"><h3>Ассистент рөлі</h3><p>Сыныптасыңа «${esc(L.tb[0])}» кестесін толтыруға көмектес: алдымен өзің толтыр, сосын түсіндіру жоспарын құр.</p></div>
+    ${inclTips(m)}`;
+  return `<div class="sheet"><div class="lesson-head"><div><div class="eyebrow">Инклюзивті білім беру · ${GR}-сынып · ${i + 1}-сабақ</div><h2>${esc(lessonLabel(i))}</h2></div></div>
+  <div class="incl-modes" role="group" aria-label="Оқушы санаты">${modes}</div>
+  ${voice ? `<div class="task" style="margin-bottom:14px"><div class="filters" style="margin:0"><label>Оқу жылдамдығы <select id="ttsRate"><option value="0.7">Баяу</option><option value="0.9">Қалыпты</option><option value="1.1">Жылдам</option></select></label><button class="btn sm" type="button" id="ttsTest">🔊 Дауысты тексеру</button><button class="btn sm" type="button" id="ttsStopAll">⏹ Тоқтату</button></div><p class="note" id="ttsInfo" style="margin:6px 0 0">${esc(ttsInfo())}</p></div>` : ''}
+  <div class="ws">${body}</div></div>`;
 }
 function afterIncl(i) {
   const L = getL(i);
-  $$('[data-m]').forEach(b => b.addEventListener('click', () => { INCL = b.dataset.m; render(); }));
-  $$('[data-say]').forEach(b => b.addEventListener('click', () => speak(b.dataset.say)));
+  $$('[data-m]').forEach(b => b.addEventListener('click', () => { ttsStop(); INCL = b.dataset.m; render(); }));
+  $$('[data-say]').forEach(b => b.addEventListener('click', () => speak(b.dataset.say, b)));
+  const rs = $('#ttsRate'); if (rs) { rs.value = String(TTS.rate); rs.onchange = () => { TTS.rate = +rs.value; }; }
+  const tt = $('#ttsTest'); if (tt) tt.onclick = () => speak(`Сәлеметсіз бе! Бүгінгі тақырып: ${L.title}.`, tt);
+  const sa = $('#ttsStopAll'); if (sa) sa.onclick = ttsStop;
   $$('[data-yn]').forEach(b => b.addEventListener('click', () => { const j = +b.dataset.yn, ok = +b.dataset.v === L.tf[j][1]; $('#ynr' + j).textContent = ok ? '✔ Дұрыс! Жарайсың!' : '✘ Қайта ойланып көр.'; }));
-  const sa = $('[data-showans]'); if (sa) sa.addEventListener('click', () => $$('.ans').forEach(a => a.hidden = false));
-  const tb = $('#tmrBtn'); if (tb) tb.addEventListener('click', () => { clearInterval(afterIncl.t); let s = 180; const f = () => { $('#tmr').textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; if (s-- <= 0) { clearInterval(afterIncl.t); toast('Уақыт бітті! Келесі қадамға өт.'); } }; f(); afterIncl.t = setInterval(f, 1000); });
+  $$('[data-mq]').forEach(b => b.addEventListener('click', () => { const j = +b.dataset.mq, ok = +b.dataset.k === L.mc[j][2]; $('#mqr' + j).textContent = ok ? '✔ Дұрыс!' : '✘ Қате. Тағы бір рет тыңдап көр.'; }));
+  $$('[data-t2]').forEach(b => b.addEventListener('click', () => { $('#t2r' + b.dataset.t2).textContent = b.dataset.ok === '1' ? '✔ Дұрыс! Жарайсың!' : '✘ Қайта ойлан.'; }));
+  const cc = $('#czChk'); if (cc) cc.onclick = () => { const cz = cloze(L); let s = 0; $$('[data-cz]').forEach(sel => { const ok = sel.value === cz[+sel.dataset.cz].word; if (ok) s++; sel.style.borderColor = sel.value ? (ok ? 'var(--ok)' : 'var(--bad)') : ''; }); $('#czRes').textContent = `${s} / ${cz.length} дұрыс`; };
+  const mb = $('#inclMatch'); if (mb) mountMatch(mb, matchPairs(L).slice(0, INCL === 'adhd' ? 3 : 6), hashStr(L.n) + 11);
+  const ob = $('#inclOrder'); if (ob && L.ord) mountOrder(ob, L.ord[1], hashStr(L.n) + 5);
+  const bar = $('#adhdBar'); if (bar) $$('[data-step]').forEach(c => c.addEventListener('change', () => { const all = $$('[data-step]'), n = all.filter(x => x.checked).length; bar.style.width = (n / all.length * 100) + '%'; $('#adhdRes').textContent = n === all.length ? '🎉 Барлық қадам орындалды! Керемет!' : `${n} / ${all.length} қадам орындалды`; }));
+  const tb = $('#tmrBtn'); if (tb) tb.addEventListener('click', () => { clearInterval(afterIncl.t); let s = 180; const f = () => { const el = $('#tmr'); if (!el) { clearInterval(afterIncl.t); return; } el.textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; if (s-- <= 0) { clearInterval(afterIncl.t); toast('Уақыт бітті! Келесі қадамға өт.'); } }; f(); afterIncl.t = setInterval(f, 1000); });
 }
 
 /* ---------- video ---------- */
@@ -917,6 +1045,7 @@ function renderRail() {
   $('#mPick').innerHTML = SEQ.map((s, i) => `<option value="${i}" ${i === CUR ? 'selected' : ''}>${i + 1}. ${esc(lessonLabel(i))}</option>`).join('');
 }
 function render() {
+  if (typeof ttsStop === 'function' && TTS.btn) ttsStop();
   try { localStorage.setItem('bioeduCur' + GR, CUR); } catch (e) {}
   $$('.grades button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.g === GR)));
   document.title = `BioEdu ${GR}-сынып`;
