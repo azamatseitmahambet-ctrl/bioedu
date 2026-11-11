@@ -452,7 +452,7 @@ const LABQ = {
   transpire: ['Әртүрлі жағдайдағы транспирация жылдамдығын кестеге жазыңыз.', 'Жел мен ылғалдылық транспирацияға қалай әсер етеді?', 'Құрғақшылыққа бейімделген өсімдіктердің белгілері.'],
   magnify: ['Ұлғайтуды және нақты өлшемді формуламен есептеңіз.', 'Бірліктерді (мм, мкм) қалай түрлендіресіз?', 'Электрондық микроскоптың артықшылығы неде?']
 };
-function labTasks(L) { const sp = (typeof SIMS !== 'undefined') && SIMS[L.n]; const en = engineFor(L); if (sp) return { goal: sp.goal || '', how: sp.how || '', q: (sp.q || []).slice(0, 3) }; return { goal: `Тақырып бойынша тәжірибені виртуалды түрде орындап, нәтижесін талдау.`, how: '', q: (LABQ[en] || ['Тәжірибенің нәтижесін кестеге жазыңыз.', 'Нәтижені тақырып ұғымдарымен түсіндіріңіз.', 'Қорытынды жасаңыз.']).slice(0, 3) }; }
+function labTasks(L) { const bp = (typeof BENCH !== 'undefined') && BENCH[L.n]; if (bp) return { goal: bp.goal, how: 'Жұптар реактивтерді пробиркаларға құйып, қыздырып, шайқап, микроскоппен қарап, бақылауын нәтижелер кестесіне жазады.', q: bp.q.slice(0, 3) }; const sp = (typeof SIMS !== 'undefined') && SIMS[L.n]; const en = engineFor(L); if (sp) return { goal: sp.goal || '', how: sp.how || '', q: (sp.q || []).slice(0, 3) }; return { goal: `Тақырып бойынша тәжірибені виртуалды түрде орындап, нәтижесін талдау.`, how: '', q: (LABQ[en] || ['Тәжірибенің нәтижесін кестеге жазыңыз.', 'Нәтижені тақырып ұғымдарымен түсіндіріңіз.', 'Қорытынды жасаңыз.']).slice(0, 3) }; }
 function partA(L, i) {
   const F = [];
   if (L.tf && L.tf.length >= 3) F.push(() => { const t = shuffle(L.tf, hashStr(L.n) + 5).slice(0, 2); return { name: 'Дұрыс па, бұрыс па?', bloom: 'білу', task: 'Тұжырымның дұрыс (Д) немесе бұрыс (Б) екенін белгілеп, бұрыс тұжырымды түзетіңіз:', body: `<ol>${t.map(x => `<li>${esc(x[0])} <i>(${x[1] ? 'Д' : 'Б'})</i></li>`).join('')}</ol>`, ds: t.map((x, j) => `${j + 1}-тұжырымды дұрыс бағалайды${x[1] ? '' : ' және түзетеді'}`) }; });
@@ -568,7 +568,59 @@ function rowsTN(L, i) {  // ТЖБ / Қайталау сабағы
     { st: '', t: '15 мин', te: '<b>(Ж) Тест – 10 сұрақ.</b><ol>' + L.mc.map(m => `<li>${esc(m[0])}</li>`).join('') + '</ol>', sa: 'Оқушылар тестті жеке орындайды.', as: 'Дескриптор – 10 балл:<ul class="desc">' + L.mc.map((m, j) => `<li>${j + 1}-сұраққа дұрыс жауап береді (1б)</li>`).join('') + '</ul>', re: siteLink('ws', i, 'Онлайн тест') },
     { st: 'Сабақтың соңы', t: '5 мин', te: `<b>Рефлексия:</b> ${rf[1]}: ${esc(rf[2])}<br><br><b>Үй тапсырмасы:</b> тоқсан тақырыптарын қайталау; тоқсан бойынша ұғымдар картасын (mind map) жасау.`, sa: 'Оқушылар өз білімін бағалайды, үй тапсырмасын жазып алады.', as: 'Өзін-өзі бағалау', re: rf[1] + ' суреті' }];
 }
+/* ---------- ТЖБ: 10 нұсқалы дайын тапсырмалар мен жауап парағы ---------- */
+let TJBV = 1;
+function tjbVariant(L, v) {
+  const P = L.pool, s = hashStr(L.title) + v * 7919, L4 = 'АӘБВ';
+  const mcAll = P.flatMap(x => x.mc), tfAll = P.flatMap(x => x.tf), prAll = P.flatMap(x => matchPairs(x).slice(0, 4).map(p => [p[0], p[1], x.title]));
+  const opAll = P.flatMap(x => [...(x.qs['Талдау'] || []), ...(x.qs['Синтез'] || [])].map(q => [cleanQ(q), x.title]));
+  const mc = shuffle(mcAll, s).slice(0, 5).map((m, q) => { const o = shuffle(m[1].map((t, j) => [t, j === (m[2] ?? 0)]), s + q + 1); return { q: m[0], o: o.map(x => x[0]), a: L4[o.findIndex(x => x[1])] }; });
+  const tf = shuffle(tfAll, s + 11).slice(0, 4).map(t => ({ q: t[0], a: t[1] ? 'Д' : 'Ж' }));
+  const used = new Set(), pr = []; for (const p of shuffle(prAll, s + 23)) { if (pr.length >= 4) break; if (used.has(p[0]) || p[0].length > 40) continue; used.add(p[0]); pr.push(p); }
+  const rp = shuffle(pr.map((p, k) => [k, p[1]]), s + 31), ma = pr.map((p, k) => `${k + 1}–${L4[rp.findIndex(r => r[0] === k)]}`);
+  const op = shuffle(opAll, s + 41)[0] || ['Тоқсанда өткен бір тақырыптың маңызын мысалмен түсіндіріңіз.', ''];
+  return { v, mc, tf, pr, rp, ma, op };
+}
+function tjbPaper(L, V, i) {
+  const L4 = 'АӘБВ';
+  return `<div class="tjb-v" style="break-after:page;margin-bottom:22px">
+  <h3 style="font-size:18px;margin:0 0 4px">${SEQ[i].q}-тоқсан бойынша жиынтық бағалау (ТЖБ) · ${GR}-сынып · ${V.v}-нұсқа</h3>
+  <p>Оқушының аты-жөні: ____________________________ Сынып: ${GR} «${esc(S.letter)}» Күні: ${fmt(DATES[i])}</p>
+  <p class="note">Орындау уақыты: 40 минут. Жалпы балл: 15.</p>
+  <p><b>1-тапсырма.</b> Дұрыс жауапты таңдаңыз (әр сұрақ – 1 балл).</p><ol>${V.mc.map(m => `<li>${esc(m.q)}<br>${m.o.map((o, j) => `${L4[j]}) ${esc(o)}`).join('&nbsp;&nbsp;&nbsp; ')}</li>`).join('')}</ol>
+  <p><b>2-тапсырма.</b> Тұжырым дұрыс болса «Д», жалған болса «Ж» деп белгілеңіз (әр тұжырым – 1 балл).</p><ol>${V.tf.map(t => `<li>${esc(t.q)} &nbsp;___</li>`).join('')}</ol>
+  <p><b>3-тапсырма.</b> Ұғымды оның сипаттамасымен сәйкестендіріңіз (әр жұп – 1 балл).</p>
+  <table class="kmzh" style="min-width:0"><tr><th>Ұғым</th><th>Сипаттама</th></tr>${V.pr.map((p, k) => `<tr><td>${k + 1}. ${esc(p[0])}</td><td>${L4[k]}) ${esc(shortText(V.rp[k][1], 120))}</td></tr>`).join('')}</table>
+  <p style="margin-top:10px"><b>4-тапсырма.</b> ${esc(V.op[0])} (2 балл)</p>
+  <p>____________________________________________________________________________<br>____________________________________________________________________________</p></div>`;
+}
+function tjbSheet(L, V, i) {
+  const box = t => `<span style="display:inline-block;min-width:26px;border:1px solid currentColor;text-align:center;margin:0 2px">${t}</span>`;
+  return `<div style="break-after:page;margin-bottom:22px"><h3 style="font-size:17px;margin:0 0 6px">ЖАУАП ПАРАҒЫ · ${SEQ[i].q}-тоқсан ТЖБ · ${V.v}-нұсқа</h3>
+  <p>Аты-жөні: ____________________________ Сынып: ${GR} «${esc(S.letter)}»</p>
+  <table class="kmzh" style="min-width:0"><tr><th>1-тапсырма (дұрыс әріпті дөңгелектеңіз)</th><th>2-тапсырма (Д / Ж)</th><th>3-тапсырма</th></tr>
+  ${[0, 1, 2, 3, 4].map(k => `<tr><td>${k + 1}. ${['А', 'Ә', 'Б', 'В'].map(box).join('')}</td><td>${k < 4 ? `${k + 1}. ${box('Д')} ${box('Ж')}` : ''}</td><td>${k < 4 ? `${k + 1} – ____` : ''}</td></tr>`).join('')}</table>
+  <p style="margin-top:8px"><b>4-тапсырма:</b><br>____________________________________________________________________________<br>____________________________________________________________________________<br>____________________________________________________________________________</p>
+  <table class="kmzh" style="min-width:0;margin-top:8px"><tr><th>Тапсырма</th><th>1</th><th>2</th><th>3</th><th>4</th><th>Барлығы</th></tr><tr><td>Балл</td><td>__ / 5</td><td>__ / 4</td><td>__ / 4</td><td>__ / 2</td><td>__ / 15</td></tr></table></div>`;
+}
+function renderTJB(i) {
+  const L = getL(i), Vs = Array.from({ length: 10 }, (_, k) => tjbVariant(L, k + 1)), V = Vs[TJBV - 1];
+  const codes = [...new Set(L.pool.flatMap(x => x.codes))];
+  return `<div class="sheet" id="kmzhSheet"><div class="lesson-head"><div><div class="eyebrow">Тоқсандық жиынтық бағалау · ${SEQ[i].q}-тоқсан · ${i + 1}-сабақ</div><h2>ТЖБ: 10 нұсқалы тапсырмалар мен жауап парағы</h2></div>
+    <div class="actions noprint"><button class="btn pri" type="button" data-copy="#tjbDoc">Word-қа көшіру</button>${window.self === window.top ? '<button class="btn" type="button" onclick="window.print()">Басып шығару</button>' : ''}</div></div>
+  <div class="actions noprint" style="margin:6px 0 12px">${Vs.map(x => `<button class="btn sm${x.v === TJBV ? ' pri' : ''}" type="button" data-tv="${x.v}">${x.v}-нұсқа</button>`).join('')}<button class="btn sm${TJBV === 0 ? ' pri' : ''}" type="button" data-tv="0">Барлық 10 нұсқа</button></div>
+  <p class="note noprint">Тексерілетін оқу мақсаттары: ${codes.join(', ')}. Әр нұсқада сұрақтар тоқсанда өтілген тақырыптардан алынған, нұсқалар бір-бірін қайталамайды. Құрылымы: 5 тест + 4 «Дұрыс/Жалған» + 4 сәйкестендіру + 1 ашық сұрақ = 15 балл.</p>
+  <div id="tjbDoc">
+  ${(TJBV ? [V] : Vs).map(x => tjbPaper(L, x, i) + tjbSheet(L, x, i)).join('')}
+  <h3 style="font-size:17px;margin:10px 0 6px">ЖАУАП КІЛТІ (мұғалімге) – 10 нұсқа</h3>
+  <div class="tw"><table class="kmzh" style="min-width:0"><tr><th>Нұсқа</th><th>1-тапсырма (тест)</th><th>2-тапсырма (Д/Ж)</th><th>3-тапсырма</th><th>4-тапсырма (дескриптор)</th></tr>
+  ${Vs.map(x => `<tr><td><b>${x.v}</b></td><td>${x.mc.map((m, k) => `${k + 1}–${m.a}`).join(', ')}</td><td>${x.tf.map((t, k) => `${k + 1}–${t.a}`).join(', ')}</td><td>${x.ma.join(', ')}</td><td>Тақырып ұғымдарын дұрыс қолданады (1б); мысалмен дәлелдейді (1б)<br><span class="note">«${esc(x.op[1])}» тақырыбы</span></td></tr>`).join('')}</table></div>
+  <h3 style="font-size:17px;margin:14px 0 6px">Балдарды бағаға ауыстыру</h3>
+  <table class="kmzh" style="min-width:0"><tr><th>Балл</th><th>0–5</th><th>6–9</th><th>10–12</th><th>13–15</th></tr><tr><td>Деңгей</td><td>Төмен</td><td>Орта</td><td>Жоғары</td><td>Өте жоғары</td></tr></table>
+  </div></div>`;
+}
 function renderKMZH(i) {
+  if (getL(i).kind === 'T') return renderTJB(i);
   const L = getL(i), date = DATES[i], v = valueFor(date);
   const ab = S.absent[GR + ':' + i] ?? 0, total = +S.total || 25;
   const A = aims(L);
@@ -607,6 +659,7 @@ function renderKMZH(i) {
 </div>`;
 }
 function afterKMZH(i) {
+  $$('[data-tv]').forEach(b => b.onclick = () => { TJBV = +b.dataset.tv; render(); });
   const inp = $('#absIn'); if (!inp) return;
   inp.addEventListener('input', () => { const v = Math.max(0, Math.min(+S.total || 25, +inp.value || 0)); S.absent[GR + ':' + i] = v; saveS(); $('#pres').textContent = (+S.total || 25) - v; });
 }
@@ -1794,12 +1847,13 @@ function xlabsFor(L) {
   if (L.pool) { const c = {}; L.pool.forEach(P => xlabsFor(P).forEach(id => c[id] = (c[id] || 0) + 1)); return Object.entries(c).sort((a, b) => b[1] - a[1]).slice(0, 3).map(x => x[0]); }
   const n = String(L.n), g = /^t\d/.test(n) ? '7' : /^u\d/.test(n) ? '9' : '8';
   const v = (XMAP[g] || {})[n];
-  return v ? v.split(' ').map(k => XK[k]) : [];
+  const BIO = ['natural-selection', 'neuron', 'gene-expression-essentials'], NO = { 'natural-selection': ['t7', 't39', '46', '52', '55', '56', '57', 'u4', 'u34', 'u35', 'u36', 'u39'], 'gene-expression-essentials': ['t49', '45'] };
+  return v ? v.split(' ').map(k => XK[k]).filter(id => BIO.includes(id) && !(NO[id] || []).includes(n)) : [];
 }
 function xlabsHTML(L) {
   const ids = xlabsFor(L);
   return `<div class="sheet"><h3>Тақырыпқа сай виртуалды зертханалар (интернетте ашылады)</h3>
-   <p class="note">Тегін PhET симуляциялары, тіркелусіз браузерде ашылады. Қазақша нұсқасы бар болса қазақша, жоқ болса орысша сілтеме берілген. Тапсырманы оқушы жұмыс парағына орындайды.</p>
+   <p class="note">Тек биологиялық PhET симуляциялары (табиғи сұрыпталу, нейрон, ген экспрессиясы), тіркелусіз браузерде қазақша ашылады. Тапсырманы оқушы жұмыс парағына орындайды.</p>
    ${ids.length ? `<div class="cards" style="grid-template-columns:repeat(auto-fill,minmax(240px,1fr))">${ids.map(id => { const x = XLABS[id]; return `<div class="card" style="text-align:left;display:grid;gap:6px;align-content:start"><b>${esc(x[1])}</b><span class="chip ${x[0] === 'kk' ? 'a' : 'b'}" style="justify-self:start">${x[0] === 'kk' ? 'қазақша' : 'орысша'}</span><span class="note">Тапсырма: ${esc(x[2])}</span>${link('▶ Зертхананы ашу', xlabUrl(id, x[0]))}</div>`; }).join('')}</div>`
      : '<p>Бұл тақырыпқа сай тегін сыртқы симуляция табылмады. Жоғарыдағы BioEdu зертханасын пайдаланыңыз.</p>'}
    </div>`;
@@ -1808,7 +1862,7 @@ function xlabsHTML(L) {
 /* ---------- lab page ---------- */
 function keyOf(L) { return KEYS[L.n] || L.key; }
 function bookLabs() { return Object.values(D.lessons).flatMap(L => (L.labs || []).map(l => [l, L])); }
-function engineFor(L) { if (typeof LAB !== 'undefined' && LAB['s_' + L.n]) return 's_' + L.n; if (L.lab === 'key' && !keyOf(L)) return 'sort'; if (L.lab === 'order' && !L.ord) return 'sort'; return LAB[L.lab] ? L.lab : 'sort'; }
+function engineFor(L) { if (LAB['b_' + L.n]) return 'b_' + L.n; if (LAB['s_' + L.n]) return 's_' + L.n; if (L.lab === 'key' && !keyOf(L)) return 'sort'; if (L.lab === 'order' && !L.ord) return 'sort'; return LAB[L.lab] ? L.lab : 'sort'; }
 function renderLab(i) {
   const L = getL(i), en = engineFor(L), E = LAB[en];
   return `<div class="sheet"><div class="lesson-head"><div><div class="eyebrow">Виртуалды зертхана · ${GR}-сынып · ${i + 1}-сабақ</div><h2>${esc(E.title)}</h2><p class="note">${esc(lessonLabel(i))}</p></div></div>
@@ -3512,8 +3566,455 @@ SIM('u51', {
   }
 });
 
+/* ---------- ЗЕРТХАНА ҮСТЕЛІ: пробиркамен нақты тәжірибе ---------- */
+const BENCH = {};
+const BN = (id, sp) => { BENCH[id] = sp; };
+const TOOLS = {
+  shk: ['🔄 Шайқау', 'Пробирканы шайқады'], h37: ['♨️ Су моншасы 37 °C', '37 °C су моншасында 10 мин ұстады'], h100: ['🔥 Қыздыру (қайнату)', 'Спирт шамында қайнағанша қыздырды'],
+  ice: ['🧊 Мұзға қою (0 °C)', 'Мұзы бар стаканға қойды'], wait: ['⏳ Күту (1 тәулік)', 'Бір тәулік күтті'], filt: ['🧻 Сүзу', 'Сүзгі қағаз арқылы сүзді'],
+  light: ['☀️ Жарыққа қою', 'Жарық жерге қойды'], dark: ['🌑 Қараңғыға қою', 'Қараңғы шкафқа қойды'], blow: ['💨 Түтікпен үрлеу', 'Түтік арқылы дем шығарды'],
+  fire: ['🕯️ Жанған шырпыны жақындату', 'Пробирка аузына жанып тұрған шырпы жақындатты'], mash: ['🥣 Езу', 'Үлгіні келіде езді'], side: ['↪️ Пробирканы жатқызу', 'Пробирканы көлденең жатқызды'], one: ['🔦 Бір жақты жарық', 'Бір жағынан ғана жарық түсірді'],
+  mic: ['🔬 Микроскоппен қарау', 'Бір тамшысын заттық әйнекке тамызып, микроскоппен қарады']
+};
+const BLEND = cs => { const v = cs.map(h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16))); const m = [0, 1, 2].map(i => Math.round(v.reduce((a, x) => a + x[i], 0) / v.length)); return '#' + m.map(x => x.toString(16).padStart(2, '0')).join(''); };
+function bnMatch(t, cond) {
+  return cond.split(' ').filter(Boolean).every(tok => {
+    if (tok[0] === '!') return !bnMatch(t, tok.slice(1));
+    if (tok[0] === '@') { const m = tok.slice(1).match(/^(h37|h100|[a-z]+)(\d*)$/); return (t.tr[m[1]] || 0) >= +(m[2] || 1); }
+    return t.c.includes(tok);
+  });
+}
+function bnResult(sp, t) {
+  if (!t.c.length) return null;
+  for (const r of sp.rules) if (bnMatch(t, r[0])) return { col: r[1], fx: r[2] || '', obs: r[3], mic: r[4] || '' };
+  return { col: BLEND(t.c.map(id => (sp.rg.find(r => r[0] === id) || [0, 0, '#dfe8ee'])[2])), fx: '', obs: 'Өзгеріс байқалмады', mic: '' };
+}
+function drawMic(c, x, y, R, pat) {
+  c.save(); c.beginPath(); c.arc(x, y, R, 0, 7); c.fillStyle = '#f7f4e8'; c.fill(); c.clip();
+  const r = rng(hashStr(pat) + 3), P = () => [x - R + r() * 2 * R, y - R + r() * 2 * R];
+  const ell = (px, py, a, b, rot, f, s) => { c.beginPath(); c.ellipse(px, py, a, b, rot, 0, 7); if (f) { c.fillStyle = f; c.fill(); } if (s) { c.strokeStyle = s; c.lineWidth = 1.2; c.stroke(); } };
+  const cells = (w, h, fill, nuc, extra) => { for (let yy = y - R; yy < y + R; yy += h) for (let xx = x - R + ((yy / h) % 2 ? w / 2 : 0); xx < x + R; xx += w) { c.strokeStyle = '#7a6a4a'; c.lineWidth = 1.4; c.fillStyle = fill; c.fillRect(xx, yy, w - 2, h - 2); c.strokeRect(xx, yy, w - 2, h - 2); if (nuc) ell(xx + w * .3, yy + h * .5, 4, 3.5, 0, nuc); if (extra) extra(xx, yy, w, h); } };
+  const p = pat.split(':')[0];
+  if (p === 'onion') cells(46, 20, 'rgba(230,220,170,.5)', '#8a6a3a');
+  else if (p === 'onionI') cells(46, 20, 'rgba(230,200,120,.6)', '#5a3a1a');
+  else if (p === 'plasm') cells(46, 20, 'rgba(240,240,230,.4)', null, (xx, yy, w, h) => ell(xx + w / 2, yy + h / 2, w * .3, h * .28, 0, 'rgba(160,80,140,.7)'));
+  else if (p === 'turg') cells(46, 20, 'rgba(170,90,150,.55)', '#4a2a4a');
+  else if (p === 'cheek') for (let k = 0; k < 9; k++) { const [px, py] = P(); ell(px, py, 18, 14, r() * 3, 'rgba(150,170,220,.5)', '#5a6aa8'); ell(px + 2, py, 4, 3.5, 0, '#2a3a8a'); }
+  else if (p === 'bact') for (let k = 0; k < 60; k++) { const [px, py] = P(); c.fillStyle = '#3a4ab0'; c.save(); c.translate(px, py); c.rotate(r() * 3); c.fillRect(-5, -1.5, 10, 3); c.restore(); }
+  else if (p === 'cocci') for (let k = 0; k < 40; k++) { const [px, py] = P(); for (let j = 0; j < 3; j++) ell(px + j * 4, py, 2, 2, 0, '#3a4ab0'); }
+  else if (p === 'yeast' || p === 'bud') for (let k = 0; k < 16; k++) { const [px, py] = P(); ell(px, py, 8, 6, r() * 3, 'rgba(230,220,180,.8)', '#8a7a4a'); if (p === 'bud' && k % 2) ell(px + 8, py - 5, 4, 3, 0, 'rgba(230,220,180,.8)', '#8a7a4a'); }
+  else if (p === 'yeastN') for (let k = 0; k < Math.min(90, +(pat.split(':')[1] || 10)); k++) { const [px, py] = P(); ell(px, py, 4, 3, r() * 3, 'rgba(230,220,180,.9)', '#8a7a4a'); }
+  else if (p === 'rbc') for (let k = 0; k < 22; k++) { const [px, py] = P(); ell(px, py, 9, 9, 0, '#d05050'); ell(px, py, 4, 4, 0, '#e89090'); }
+  else if (p === 'rbcC') for (let k = 0; k < 22; k++) { const [px, py] = P(); c.fillStyle = '#b03a3a'; c.beginPath(); for (let j = 0; j <= 16; j++) { const a = j / 16 * 6.3, q = j % 2 ? 5 : 8; j ? c.lineTo(px + Math.cos(a) * q, py + Math.sin(a) * q) : c.moveTo(px + q, py); } c.fill(); }
+  else if (p === 'rbcH') for (let k = 0; k < 18; k++) { const [px, py] = P(); ell(px, py, 12, 12, 0, null, 'rgba(200,90,90,.35)'); }
+  else if (p === 'agg') for (let k = 0; k < 6; k++) { const [px, py] = P(); for (let j = 0; j < 7; j++) ell(px + (r() - .5) * 18, py + (r() - .5) * 18, 6, 6, 0, '#b03a3a'); }
+  else if (p === 'stomaO' || p === 'stomaC') { cells(40, 26, 'rgba(220,235,210,.5)'); for (let k = 0; k < 6; k++) { const [px, py] = P(); ell(px - 5, py, 5, 11, 0, '#5aa04a'); ell(px + 5, py, 5, 11, 0, '#5aa04a'); if (p === 'stomaO') ell(px, py, 2.5, 7, 0, '#333'); } }
+  else if (p === 'starch') for (let k = 0; k < 30; k++) { const [px, py] = P(); ell(px, py, 6, 5, r() * 3, '#2a2a7a'); }
+  else if (p === 'pollen' || p === 'pollen0') for (let k = 0; k < 10; k++) { const [px, py] = P(); ell(px, py, 8, 8, 0, '#e8c040', '#a07a10'); if (p === 'pollen') { c.strokeStyle = '#c8a030'; c.lineWidth = 2; c.beginPath(); c.moveTo(px, py); c.quadraticCurveTo(px + 20, py + 10, px + 30 + r() * 20, py + 25); c.stroke(); } }
+  else if (p === 'para') for (let k = 0; k < 4; k++) { const [px, py] = P(); ell(px, py, 30, 12, r() * 3, 'rgba(200,220,190,.8)', '#6a8a5a'); ell(px - 14, py, 4 + +(pat.split(':')[1] || 3), 4 + +(pat.split(':')[1] || 3), 0, 'rgba(120,170,240,.9)'); }
+  else if (p === 'protists') { ell(x - 30, y - 20, 26, 18, .3, 'rgba(200,210,190,.8)', '#7a8a6a'); ell(x + 35, y + 10, 30, 11, -.4, 'rgba(200,220,190,.8)', '#6a8a5a'); ell(x - 10, y + 50, 14, 8, 0, 'rgba(110,190,90,.9)', '#3a7a2a'); c.strokeStyle = '#3a7a2a'; c.beginPath(); c.moveTo(x - 24, y + 50); c.quadraticCurveTo(x - 40, y + 40, x - 50, y + 60); c.stroke(); }
+  else if (p === 'xylem') { ell(x, y, R * .9, R * .9, 0, '#e8f0c8'); for (let k = 0; k < 8; k++) { const a = k / 8 * 6.28; ell(x + Math.cos(a) * 55, y + Math.sin(a) * 55, 12, 12, 0, pat.includes('red') ? '#c8304a' : '#a8c890'); ell(x + Math.cos(a) * 72, y + Math.sin(a) * 72, 8, 8, 0, '#f0e8a0'); } }
+  else if (p === 'daph') { ell(x, y, 50, 70, .2, 'rgba(230,200,150,.6)', '#a08050'); ell(x - 5, y - 15, 9, 7, 0, '#d04040'); ell(x - 10, y - 55, 8, 8, 0, '#222'); c.fillStyle = '#333'; c.fillText(`${pat.split(':')[1] || ''} соқ/мин`, x - 30, y + 90); }
+  else if (p === 'mito') { cells(40, 34, 'rgba(240,225,200,.5)', null, (xx, yy, w, h) => { const ph = Math.floor(r() * 5); c.fillStyle = '#9a2a5a'; if (ph === 0) ell(xx + w / 2, yy + h / 2, 7, 7, 0, 'rgba(154,42,90,.5)'); if (ph === 1) for (let j = 0; j < 4; j++) c.fillRect(xx + 10 + j * 5, yy + 8 + (j % 2) * 6, 2, 10); if (ph === 2) c.fillRect(xx + w / 2 - 1, yy + 6, 3, h - 14); if (ph === 3) { c.fillRect(xx + 6, yy + 8, 3, h - 18); c.fillRect(xx + w - 12, yy + 8, 3, h - 18); } if (ph === 4) { ell(xx + 10, yy + h / 2, 5, 6, 0, '#9a2a5a'); ell(xx + w - 12, yy + h / 2, 5, 6, 0, '#9a2a5a'); } }); }
+  else if (p === 'chrom') for (let k = 0; k < 16; k++) { const [px, py] = [x - 60 + (k % 8) * 16, y - 20 + Math.floor(k / 8) * 40]; c.strokeStyle = '#9a2a5a'; c.lineWidth = 4; c.save(); c.translate(px, py); c.rotate((r() - .5)); c.beginPath(); c.moveTo(-2, -10); c.lineTo(-2, 10); c.moveTo(2, -10); c.lineTo(2, 10); c.stroke(); c.restore(); }
+  else if (p === 'coac') for (let k = 0; k < 14; k++) { const [px, py] = P(); const s = 6 + r() * 14; ell(px, py, s, s, 0, 'rgba(200,170,120,.5)', '#a07a40'); ell(px + s / 3, py, s / 4, s / 4, 0, 'rgba(160,120,60,.6)'); }
+  else if (p === 'emul') for (let k = 0; k < 120; k++) { const [px, py] = P(); ell(px, py, 2.5, 2.5, 0, 'rgba(240,200,60,.8)'); }
+  else if (p === 'oil') for (let k = 0; k < 5; k++) { const [px, py] = P(); ell(px, py, 22, 22, 0, 'rgba(240,200,60,.7)', '#c8a020'); }
+  else if (p === 'mold') { c.strokeStyle = '#8a8a8a'; c.lineWidth = 1.5; for (let k = 0; k < 8; k++) { const [px, py] = P(); c.beginPath(); c.moveTo(px, py + 40); c.lineTo(px, py); c.stroke(); ell(px, py, 7, 7, 0, pat.includes('pen') ? '#3a8a6a' : '#555'); } }
+  else if (p === 'threads') { c.strokeStyle = 'rgba(255,255,255,.95)'; c.lineWidth = 2.5; for (let k = 0; k < 12; k++) { const [px, py] = P(); c.beginPath(); c.moveTo(px, py); c.bezierCurveTo(px + 20, py - 15, px + 30, py + 20, px + 50, py); c.stroke(); } c.fillStyle = 'rgba(120,140,160,.25)'; c.fillRect(x - R, y - R, 2 * R, 2 * R); }
+  else if (p === 'root') { c.strokeStyle = '#c8b090'; c.lineWidth = 3; for (let k = 0; k < 6; k++) { c.beginPath(); c.moveTo(x - 50 + k * 20, y - 60); c.lineTo(x - 55 + k * 22, y + 60); c.stroke(); } }
+  else if (p === 'cil') { ell(x, y, 60, 24, 0, 'rgba(200,220,190,.8)', '#6a8a5a'); c.strokeStyle = '#6a8a5a'; for (let k = 0; k < 40; k++) { const a = k / 40 * 6.28; c.beginPath(); c.moveTo(x + Math.cos(a) * 60, y + Math.sin(a) * 24); c.lineTo(x + Math.cos(a) * 68, y + Math.sin(a) * 30); c.stroke(); } }
+  else if (p === 'clear') { c.fillStyle = 'rgba(200,220,230,.3)'; c.fillRect(x - R, y - R, 2 * R, 2 * R); }
+  else if (p === 'tar') for (let k = 0; k < 40; k++) { const [px, py] = P(); ell(px, py, 3, 3, 0, '#6a4a1a'); }
+  c.restore(); c.strokeStyle = '#333'; c.lineWidth = 4; c.beginPath(); c.arc(x, y, R, 0, 7); c.stroke();
+}
+function mkBench(sp) {
+  const nT = sp.n || 4;
+  return {
+    title: sp.title,
+    html: () => `<div class="task" style="margin-bottom:12px"><h3>Жұмыстың мақсаты</h3><p>${esc(sp.goal)}</p><p class="note"><b>Құрал-жабдықтар мен реактивтер:</b> ${sp.rg.map(r => esc(r[1])).join('; ')}; пробиркалар (${nT}), штатив${sp.tools.includes('h37') ? ', су моншасы' : ''}${sp.tools.includes('h100') ? ', спирт шамы, пробирка ұстағыш' : ''}${sp.tools.includes('mic') ? ', микроскоп, заттық және жабын әйнек' : ''}.</p><p class="note">⚠️ Қауіпсіздік: қыздырғанда пробирка аузын өзіңе және көршіңе бағыттама; реактивтерді иіскеме, дәмін татпа.</p></div>
+      <div class="lab-wrap"><div class="lab-stage"><canvas id="bnC" style="cursor:pointer"></canvas><canvas id="bnM" style="margin-top:10px;display:none"></canvas></div>
+      <div class="ctrl"><p class="note"><b>Қалай жұмыс істейді:</b> 1) жоғарыдағы реактив құтысын басыңыз; 2) пробирканы басыңыз – реактив құйылады. Құралдар таңдалған пробиркаға қолданылады.</p>
+      <div class="actions" id="bnT">${sp.tools.map(k => `<button class="btn sm" type="button" data-tool="${k}">${TOOLS[k][0]}</button>`).join('')}<button class="btn sm" type="button" data-tool="clr">🧽 Пробирканы жуу</button></div>
+      <div class="readout" id="bnO">Реактивті таңдаңыз.</div>
+      <div class="task"><h3>Жұмыс барысы</h3><ol id="bnS" class="note" style="padding-left:18px">${sp.steps.map((s, k) => `<li data-s="${k}">${esc(s[0])}</li>`).join('')}</ol><p class="note" id="bnSP"></p></div></div></div>
+      <h3 style="font-size:17px;margin:14px 0 6px">Нәтижелер кестесі (бақылағаныңызды таңдаңыз)</h3>
+      <div class="tw"><table class="blank-table" id="bnR"></table></div><div class="actions" style="margin-top:8px"><button class="btn pri" type="button" id="bnChk">Нәтижені тексеру</button> <span class="note" id="bnRes"></span></div>
+      <div class="task" style="margin-top:12px"><h3>Қорытынды сұрақтар (жұмыс парағына)</h3><ol>${sp.q.map(x => `<li>${esc(x)}</li>`).join('')}</ol></div>`,
+    init() {
+      const cv = $('#bnC'), W = 640, H = 360, c = canvasFit(cv, W, H), T = Array.from({ length: nT }, () => ({ c: [], tr: {} }));
+      let bot = null, sel = 0, anim = null, raf, micPat = '';
+      const nB = sp.rg.length, bx = k => nB === 1 ? W / 2 : 40 + k * (W - 80) / (nB - 1), tx = k => W / 2 + (k - (nT - 1) / 2) * Math.min(120, (W - 80) / nT);
+      const OBS = [...new Set(sp.rules.map(r => r[3]).concat(['Өзгеріс байқалмады']))];
+      const draw = () => {
+        if (!cv.isConnected) return; c.clearRect(0, 0, W, H); c.fillStyle = cv_('sheet'); c.fillRect(0, 0, W, H);
+        c.fillStyle = '#c9b48a'; c.fillRect(0, 108, W, 8); c.fillStyle = '#8a6a3a'; c.fillRect(0, 318, W, 10);
+        sp.rg.forEach((r, k) => { const x = bx(k); c.fillStyle = r[2]; rrect(c, x - 16, 46, 32, 56, 6); c.fill(); c.strokeStyle = bot === k ? cv_('eosin') : '#777'; c.lineWidth = bot === k ? 3 : 1.4; c.stroke(); c.fillStyle = '#ddd'; c.fillRect(x - 7, 32, 14, 14); c.strokeStyle = '#777'; c.strokeRect(x - 7, 32, 14, 14);
+          c.fillStyle = cv_('ink'); c.font = '10px PT Sans, Arial'; c.textAlign = 'center'; wrapText(c, r[1].split(' (')[0], x, 16, 76, 10); });
+        c.fillStyle = '#b89a6a'; c.fillRect(tx(0) - 50, 270, tx(nT - 1) - tx(0) + 100, 10);
+        T.forEach((t, k) => { const x = tx(k), res = bnResult(sp, t), vol = Math.min(5, t.c.length), top = 150, bot2 = 300;
+          if (res) { c.fillStyle = res.col; const lv = bot2 - 18 - vol * 22; c.beginPath(); c.moveTo(x - 16, lv); c.lineTo(x - 16, bot2 - 2); c.arc(x, bot2 - 2, 16, Math.PI, 0, true); c.lineTo(x + 16, lv); c.closePath(); c.fill();
+            const fx = res.fx; c.save(); c.beginPath(); c.rect(x - 16, lv, 32, bot2 + 18 - lv); c.clip();
+            if (fx.includes('p')) { c.fillStyle = 'rgba(250,250,245,.95)'; c.fillRect(x - 16, bot2 - 10, 32, 12); }
+            if (fx.includes('r')) { c.fillStyle = '#c8501e'; c.fillRect(x - 16, bot2 - 10, 32, 12); }
+            if (fx.includes('b')) { c.fillStyle = 'rgba(255,255,255,.85)'; for (let q = 0; q < 8; q++) { c.beginPath(); c.arc(x - 10 + (q * 7) % 22, lv + 6 + (q * 13 + Date.now() / 40) % (bot2 - lv - 10), 2.5, 0, 7); c.fill(); } }
+            if (fx.includes('l')) { c.fillStyle = fx.includes('L') ? '#d8403a' : 'rgba(240,200,60,.95)'; c.fillRect(x - 16, lv, 32, 9); }
+            if (fx.includes('e')) { c.fillStyle = 'rgba(255,245,210,.95)'; for (let q = 0; q < 18; q++) { c.beginPath(); c.arc(x - 12 + (q * 11) % 24, lv + 4 + (q * 17) % (bot2 - lv), 1.8, 0, 7); c.fill(); } }
+            if (fx.includes('t')) { c.strokeStyle = '#fff'; c.lineWidth = 2; for (let q = 0; q < 4; q++) { c.beginPath(); c.moveTo(x - 10 + q * 6, lv + 2); c.bezierCurveTo(x - 14 + q * 6, lv + 14, x - 4 + q * 6, lv + 16, x - 8 + q * 6, lv + 26); c.stroke(); } }
+            if (fx.includes('c')) { c.fillStyle = 'rgba(250,250,240,.95)'; for (let q = 0; q < 6; q++) { c.beginPath(); c.arc(x - 9 + (q * 9) % 20, lv + 12 + (q * 15) % 40, 5, 0, 7); c.fill(); } }
+            if (fx.includes('f')) { c.fillStyle = 'rgba(255,255,255,.95)'; for (let q = 0; q < 10; q++) { c.beginPath(); c.arc(x - 12 + (q * 5) % 26, lv - 2 + (q % 3) * 4, 4, 0, 7); c.fill(); } }
+            if (fx.includes('a')) { c.fillStyle = 'rgba(130,90,40,.9)'; for (let q = 0; q < 7; q++) { c.beginPath(); c.arc(x - 10 + (q * 9) % 22, bot2 - 6 - (q % 3) * 7, 4, 0, 7); c.fill(); } }
+            c.restore();
+            if (fx.includes('s')) { c.strokeStyle = '#3c9a3a'; c.lineWidth = 3; c.beginPath(); c.moveTo(x, lv); c.quadraticCurveTo(x + (t.tr.one ? 14 : t.tr.side ? 0 : 2), lv - 30, x + (t.tr.one ? 26 : 2), lv - 52); c.stroke(); c.fillStyle = fx.includes('y') ? '#d8c84a' : '#5aaa4a'; c.beginPath(); c.ellipse(x + (t.tr.one ? 28 : 4), lv - 54, 9, 4, -.4, 0, 7); c.fill(); }
+            if (fx.includes('R')) { c.strokeStyle = '#e8dcc0'; c.lineWidth = 2; for (let q = 0; q < 4; q++) { c.beginPath(); c.moveTo(x - 4 + q * 3, lv + 4); c.lineTo(x - 10 + q * 7, bot2 - 8); c.stroke(); } }
+            if (fx.includes('g')) { c.fillStyle = cv_('eosin'); c.globalAlpha = .7; c.beginPath(); c.arc(x, top - 22, 16, 0, 7); c.fill(); c.globalAlpha = 1; } }
+          c.strokeStyle = sel === k ? cv_('hema') : '#888'; c.lineWidth = sel === k ? 3 : 1.8; c.beginPath(); c.moveTo(x - 17, top); c.lineTo(x - 17, bot2 - 2); c.arc(x, bot2 - 2, 17, Math.PI, 0, true); c.lineTo(x + 17, top); c.stroke();
+          c.fillStyle = cv_('ink'); c.font = 'bold 12px PT Sans, Arial'; c.textAlign = 'center'; c.fillText(String(k + 1), x, top - 6);
+          c.font = '10px PT Sans, Arial'; wrapText(c, t.c.map(id => (sp.rg.find(r => r[0] === id) || [0, id])[1].split(' ')[0]).join(' + ') || 'бос', x, 338, 104, 10);
+          const tr = Object.keys(t.tr).filter(k2 => k2 !== 'mic').map(k2 => TOOLS[k2] ? TOOLS[k2][0].split(' ')[0] : '').join(''); c.fillText(tr, x, bot2 + 18); });
+        if (anim) { const a = anim, e = Math.min(1, a.t); const x0 = bx(a.b), x1 = tx(a.k), px = x0 + (x1 - x0) * Math.min(1, e * 1.6), py = 40 + (130 - 40) * Math.min(1, e * 1.6);
+          c.fillStyle = '#eee'; c.strokeStyle = '#555'; c.lineWidth = 1.5; c.fillRect(px - 4, py - 34, 8, 34); c.strokeRect(px - 4, py - 34, 8, 34); c.fillStyle = sp.rg[a.b][2]; c.fillRect(px - 3, py - 18, 6, 16);
+          if (e > .6) { c.beginPath(); c.arc(px, py + 8 + (e - .6) * 60, 3, 0, 7); c.fill(); }
+          a.t += .045; if (a.t >= 1) { anim = null; T[a.k].c.push(sp.rg[a.b][0]); after(a.k, `${a.k + 1}-пробиркаға «${sp.rg[a.b][1]}» құйылды.`); } }
+        if (anim || T.some(t => { const r = bnResult(sp, t); return r && r.fx.includes('b'); })) raf = requestAnimationFrame(draw);
+      };
+      const loop = () => { cancelAnimationFrame(raf); draw(); };
+      const steps = () => { let n = 0; sp.steps.forEach((s, k) => { const ok = !s[1] || T.some(t => bnMatch(t, s[1])); if (ok && s[1]) n++; const li = $(`#bnS [data-s="${k}"]`); li.style.color = ok && s[1] ? cv_('ok') : ''; li.style.fontWeight = ok && s[1] ? '700' : ''; li.textContent = (ok && s[1] ? '✔ ' : '') + s[0]; }); $('#bnSP').textContent = `Орындалған қадам: ${n} / ${sp.steps.filter(s => s[1]).length}`; };
+      const table = () => { const keep = {}; $$('#bnR select').forEach(s => keep[s.dataset.k] = s.value);
+        $('#bnR').innerHTML = `<tr><th>№</th><th>Құрамы және жағдайы</th><th>Бақылау (таңдаңыз)</th><th></th></tr>` + T.map((t, k) => `<tr><td>${k + 1}</td><td>${esc(t.c.map(id => (sp.rg.find(r => r[0] === id) || [0, id])[1]).join(' + ') || '—')}${Object.keys(t.tr).filter(x => x !== 'mic').length ? '<br><span class="note">' + Object.keys(t.tr).filter(x => x !== 'mic').map(x => TOOLS[x][1].toLowerCase()).join('; ') + '</span>' : ''}</td><td><select data-k="${k}" aria-label="${k + 1}-пробирка бақылауы"${t.c.length ? '' : ' disabled'}><option value="">— таңда —</option>${OBS.map(o => `<option${keep[k] === o ? ' selected' : ''}>${esc(o)}</option>`).join('')}</select></td><td id="bnRk${k}"></td></tr>`).join(''); };
+      const after = (k, msg) => { const r = bnResult(sp, T[k]); $('#bnO').textContent = `${msg}\n${k + 1}-пробирка: ${r ? (T[k].tr.mic || !r.mic ? r.obs : 'Өзгерісті бақылау үшін құралдарды қолданыңыз.') : 'бос'}`; steps(); table(); loop(); };
+      const hit = e => { const b = cv.getBoundingClientRect(), x = (e.clientX - b.left) * W / b.width, y = (e.clientY - b.top) * H / b.height;
+        if (y < 112) { for (let k = 0; k < nB; k++) if (Math.abs(x - bx(k)) < 26) { bot = k; $('#bnO').textContent = `Таңдалды: «${sp.rg[k][1]}». Енді пробирканы басыңыз.`; loop(); return; } }
+        for (let k = 0; k < nT; k++) if (Math.abs(x - tx(k)) < 30 && y > 120) { sel = k; if (bot !== null && !anim) { if (T[k].c.length >= 5) { $('#bnO').textContent = 'Пробирка толы. Алдымен жуыңыз.'; } else { anim = { b: bot, k, t: 0 }; } } else after(k, `${k + 1}-пробирка таңдалды.`); loop(); return; } };
+      cv.addEventListener('click', hit);
+      $$('#bnT [data-tool]').forEach(b => b.onclick = () => { const k = sel, t = T[k], tool = b.dataset.tool;
+        if (tool === 'clr') { T[k] = { c: [], tr: {} }; $('#bnM').style.display = 'none'; after(k, `${k + 1}-пробирка жуылды.`); return; }
+        if (!t.c.length) { $('#bnO').textContent = `${k + 1}-пробирка бос. Алдымен реактив құйыңыз.`; return; }
+        t.tr[tool] = (t.tr[tool] || 0) + 1;
+        if (tool === 'mic') { const r = bnResult(sp, t), m = $('#bnM'); m.style.display = ''; const mc = canvasFit(m, W, 240); mc.fillStyle = cv_('sheet'); mc.fillRect(0, 0, W, 240); drawMic(mc, 160, 120, 108, (r && r.mic) || 'clear'); mc.fillStyle = cv_('ink'); mc.font = '13px PT Sans, Arial'; mc.textAlign = 'left'; wrapText(mc, `Микроскоп (×400), ${k + 1}-пробирка: ${r ? r.obs : ''}`, 440, 120, 190, 15); }
+        after(k, `${TOOLS[tool][1]} (${k + 1}-пробирка).`); });
+      $('#bnChk').onclick = () => { let ok = 0, n = 0; T.forEach((t, k) => { const r = bnResult(sp, t), s = $(`#bnR select[data-k="${k}"]`); if (!r || !s) return; n++; const good = s.value === r.obs; if (good) ok++; $('#bnRk' + k).textContent = s.value ? (good ? '✔' : '✘') : ''; }); $('#bnRes').textContent = n ? `${ok} / ${n} бақылау дұрыс жазылды.${ok < n ? ' Пробирканы қайта қараңыз (немесе құралды қолданыңыз).' : ' Жарайсың!'}` : 'Алдымен тәжірибе жасаңыз.'; };
+      steps(); table(); loop();
+    }
+  };
+}
+
+/* ================= 7-СЫНЫП: пробиркалық тәжірибелер ================= */
+BN('t1', { title: 'Температура мен тұздылықтың дафнияға әсері (төзімділік шегі)', goal: 'Абиотикалық факторлардың (температура, тұздылық) тірі ағзаға әсерін дафния мысалында тәжірибе арқылы анықтау.',
+  rg: [['daf', 'Дафниялар бар тоған суы', '#d8e6c8'], ['su', 'Таза су', '#dfeef6'], ['tuz', 'NaCl 3% ерітіндісі', '#e8eef2']], n: 4, tools: ['ice', 'h37', 'mic'],
+  steps: [['1-пробиркаға дафниялы су құйып, бөлме температурасында қалдыр (бақылау)', 'daf !tuz !@ice !@h37'], ['2-пробиркадағы дафниялы суды мұзға қой', 'daf @ice'], ['3-пробиркадағы дафниялы суды 37 °C су моншасына қой', 'daf @h37'], ['4-пробиркаға дафниялы су мен тұз ерітіндісін қос', 'daf tuz'], ['Әр пробирканы микроскоппен қарап, жүрек соғуын сана', 'daf @mic']],
+  rules: [['daf tuz', '#e0e8dc', '', 'Дафниялар қозғалмайды – тұзды орта олар үшін төзімділік шегінен тыс', 'daph:0'], ['daf @h37', '#d8e6c8', '', 'Жүрек жиі соғады (≈ 350 соқ/мин), қозғалыс күшейді, кейін әлсіреді', 'daph:350'], ['daf @ice', '#d8e6c8', '', 'Жүрек баяу соғады (≈ 80 соқ/мин), дафниялар баяулады', 'daph:80'], ['daf', '#d8e6c8', '', 'Дафниялар белсенді жүзеді, жүрек ≈ 200 соқ/мин (оптимум)', 'daph:200']],
+  q: ['Қай жағдай дафния үшін оптимум, қайсысы пессимум болды?', 'Нәтижені төзімділік қисығы түрінде сызыңыз.', 'Неліктен тұщы су жануарлары теңіз суында өмір сүре алмайды?'] });
+BN('t3', { title: 'Шөп тұнбасындағы микроағзалар сукцессиясы', goal: 'Шөп тұнбасындағы микроағзалар қауымдастығының уақыт өте алмасуын (сукцессияны) микроскоп арқылы бақылау.',
+  rg: [['sop', 'Құрғақ шөп', '#c8b070'], ['su', 'Тоған суы', '#d8e4d0'], ['qaq', 'Қайнатылған су', '#e8f2f6']], n: 3, tools: ['wait', 'mic'],
+  steps: [['1-пробиркаға құрғақ шөп пен тоған суын сал', 'sop su'], ['2-пробиркаға шөп пен қайнатылған су сал (бақылау)', 'sop qaq'], ['1-пробирканы 1 тәулік күтіп, микроскоппен қара', 'sop su @wait @mic'], ['Тағы 2 тәулік күтіп (барлығы 3), қайта қара', 'sop su @wait3 @mic'], ['Тағы күтіп (барлығы 6 тәулік), соңғы қауымдастықты қара', 'sop su @wait6']],
+  rules: [['sop su @wait6', '#a8b880', 'f', 'Жасыл балдырлар мен амёбалар басым – қауымдастық тұрақталды', 'protists'], ['sop su @wait3', '#b8b070', 'f', 'Кебісшелер көбейіп, бактерияларды жейді', 'para:3'], ['sop su @wait', '#c8b878', 'f', 'Лайланды: бактериялар көбейді (пионер ағзалар)', 'bact'], ['sop qaq @wait', '#d8d0a0', '', 'Тек бактериялар, қарапайымдылар жоқ (споралары қайнағанда өлген)', 'bact'], ['sop', '#d8cc98', '', 'Тұнба мөлдір, тіршілік әлі байқалмайды', 'clear']],
+  q: ['Сукцессияның кезеңдерін ретімен жазыңыз.', 'Неліктен алғашқы болып бактериялар көбейді?', 'Бұл тәжірибе бірінші реттік пе, әлде екінші реттік сукцессияға ма? Дәлелдеңіз.'] });
+BN('t5', { title: 'Су сынамаларының ластануын анықтау', goal: 'Әртүрлі су көздерінің ластануын индикаторлар арқылы анықтап, адам әрекетінің су экожүйесіне әсерін бағалау.',
+  rg: [['bul', 'Бұлақ суы', '#e2f0f6'], ['ozn', 'Ауыл маңындағы өзен суы', '#d8e0c8'], ['agn', 'Тұрмыстық ағынды су', '#b8b090'], ['ind', 'Әмбебап индикатор', '#e8c040'], ['nit', 'Нитрат тест-реактиві', '#f0f0f0'], ['sab', 'Сабын ерітіндісі', '#f6f6f0']], n: 4, tools: ['shk'],
+  steps: [['Бұлақ суына әмбебап индикатор тамыз', 'bul ind'], ['Ағынды суға әмбебап индикатор тамыз', 'agn ind'], ['Өзен суы мен ағынды суға нитрат реактивін қос', 'agn nit'], ['Ағынды суға сабын қосып шайқа (кермектік пен майлар)', 'agn sab @shk']],
+  rules: [['agn ind', '#3a7ad0', '', 'Көк-жасыл: pH ≈ 9, сабын-жуғыш заттар бар'], ['ozn ind', '#8ac040', '', 'Сары-жасыл: pH ≈ 7,5'], ['bul ind', '#c8d040', '', 'Сары-жасыл: pH ≈ 7, қалыпты'], ['agn nit', '#d03a7a', '', 'Қызғылт-қызыл: нитраттар өте көп'], ['ozn nit', '#e8a0b8', '', 'Әлсіз қызғылт: нитрат аз мөлшерде'], ['bul nit', '#f2f0f0', '', 'Түс өзгермеді: нитрат жоқ'], ['agn sab @shk', '#c0b898', 'a', 'Көбік аз, қабыршақтар түзілді – ластанған су'], ['sab @shk', '#f0f6f8', 'f', 'Мол көбік – су таза, жұмсақ']],
+  q: ['Қай су сынамасы ең көп ластанған? Дәлелдеңіз.', 'Нитраттар су қоймасына қайдан түседі және қандай зиян келтіреді?', 'Өз өңіріңдегі су көздерін қорғаудың 3 жолын ұсыныңыз.'] });
+BN('t8', { title: 'Әртүрлі патшалық өкілдерінің жасушаларын микроскоппен салыстыру', goal: 'Бактерия, саңырауқұлақ, өсімдік және жануар жасушаларының препараттарын дайындап, патшалықтардың айырмашылығын анықтау.',
+  rg: [['jog', 'Йогурт (сүт қышқылы бактериялары)', '#f6f4ec'], ['ash', 'Ашытқы ерітіндісі', '#e8dcb8'], ['piy', 'Пияз қабығы', '#f0e6c8'], ['urt', 'Ұрт эпителийі (таяқшамен алынған)', '#f4e8e4'], ['met', 'Метилен көгі', '#3a5ab0'], ['yod', 'Йод ерітіндісі', '#a0522d']], n: 4, tools: ['mic'],
+  steps: [['Йогуртқа метилен көгін тамызып, микроскоппен қара', 'jog met @mic'], ['Ашытқыға метилен көгін тамызып қара', 'ash met @mic'], ['Пияз қабығына йод тамызып қара', 'piy yod @mic'], ['Ұрт эпителийіне метилен көгін тамызып қара', 'urt met @mic']],
+  rules: [['jog met', '#6a80c8', '', 'Ұсақ таяқшалар, ядросы жоқ – бактериялар (прокариот)', 'bact'], ['ash met', '#8a98c8', '', 'Сопақ жасушалар, бүршіктенеді – саңырауқұлақ (ашытқы)', 'bud'], ['piy yod', '#c8a060', '', 'Тікбұрышты жасушалар, қабырғасы мен ядросы бар – өсімдік', 'onionI'], ['urt met', '#8a9ad0', '', 'Пішіні тұрақсыз жасушалар, ядросы көк, қабырғасы жоқ – жануар', 'cheek'], ['jog', '#f6f4ec', '', 'Боялмаған препарат: бактериялар көрінбейді', 'clear']],
+  q: ['Төрт препаратты салып, айырмашылықтарын кестеге жазыңыз.', 'Қай жасушада ядро жоқ? Бұл қай патшалық?', 'Саңырауқұлақ жасушасы өсімдік және жануар жасушасына несімен ұқсас?'] });
+BN('t11', { title: 'Өсімдік және жануар жасушаларының препаратын дайындау', goal: 'Пияз қабығы мен ұрт эпителийінің препаратын бояп, өсімдік пен жануар жасушасының құрылысын салыстыру.',
+  rg: [['piy', 'Пияз қабығы', '#f0e6c8'], ['urt', 'Ұрт эпителийі', '#f4e8e4'], ['su', 'Су тамшысы', '#dfeef6'], ['yod', 'Йод ерітіндісі', '#a0522d'], ['met', 'Метилен көгі', '#3a5ab0']], n: 4, tools: ['mic'],
+  steps: [['Заттық әйнекке су тамызып, пияз қабығын сал', 'piy su'], ['Пияз препаратын йодпен бояп, микроскоппен қара', 'piy yod @mic'], ['Ұрт эпителийін метилен көгімен боя', 'urt met'], ['Эпителий препаратын микроскоппен қара', 'urt met @mic']],
+  rules: [['piy yod', '#c8a060', '', 'Ядро сары-қоңыр боялды, жасуша қабырғасы анық көрінеді', 'onionI'], ['piy', '#f0e6c8', '', 'Жасушалар көрінеді, бірақ ядросы анық емес (боялмаған)', 'onion'], ['urt met', '#8a9ad0', '', 'Жалпақ жасушалар, ядросы көк, қабырғасы жоқ', 'cheek'], ['urt', '#f4e8e4', '', 'Мөлдір жасушалар әрең көрінеді', 'clear']],
+  q: ['Өсімдік пен жануар жасушасының 3 айырмашылығын жазыңыз.', 'Препаратты неге бояйды?', 'Жасуша → ұлпа → мүше → мүшелер жүйесі реттілігіне мысал келтіріңіз.'] });
+BN('t12', { title: 'Су – әмбебап еріткіш', goal: 'Судың әртүрлі заттарды еріту қабілетін тексеріп, оның тірі ағзадағы еріткіш және тасымалдаушы рөлін түсіндіру.',
+  rg: [['su', 'Су', '#dfeef6'], ['tuz', 'Ас тұзы', '#f6f6f6'], ['qan', 'Қант', '#f8f4ea'], ['may', 'Өсімдік майы', '#f0d860'], ['kr', 'Крахмал', '#f4f2ea'], ['kum', 'Құм', '#c8a870']], n: 5, tools: ['shk', 'h100'],
+  steps: [['Суға тұз қосып шайқа', 'su tuz @shk'], ['Суға қант қосып шайқа', 'su qan @shk'], ['Суға май қосып шайқа', 'su may @shk'], ['Суға құм қосып шайқа', 'su kum @shk'], ['Крахмалды сумен қыздыр', 'su kr @h100']],
+  rules: [['su may', '#e8eef0', 'l', 'Май еріген жоқ, бетіне қабат болып жиналды (гидрофобты)'], ['su kum', '#dfeef6', 'a', 'Құм ерімеді, түбіне шөкті'], ['su kr @h100', '#eef0f0', '', 'Крахмал клейстер (коллоид ерітінді) түзді'], ['su kr', '#f0f0ea', 'p', 'Суықта крахмал ерімей, түбіне шөкті'], ['su tuz @shk', '#e6f2f8', '', 'Тұз толық еріді (гидрофильді)'], ['su qan @shk', '#e6f2f8', '', 'Қант толық еріді (гидрофильді)'], ['su tuz', '#e8f0f2', 'p', 'Тұз түбінде жатыр – шайқау керек'], ['su qan', '#e8f0f2', 'p', 'Қант түбінде жатыр – шайқау керек']],
+  q: ['Заттарды гидрофильді және гидрофобты деп топтаңыз.', 'Судың еріткіштік қасиеті жасуша үшін неге маңызды?', 'Ағзадағы 2 макроэлемент пен 2 микроэлементтің рөлін жазыңыз.'] });
+BN('t13', { title: 'Азық-түліктердегі органикалық заттарды анықтау', goal: 'Сапалық реакциялар арқылы тағамдағы крахмалды, глюкозаны, нәруызды және майды анықтау.',
+  rg: [['nan', 'Картоп/нан сығындысы', '#efe2c4'], ['jum', 'Жұмыртқа ағы', '#f2efe0'], ['may', 'Күнбағыс майы', '#f0d860'], ['alma', 'Алма шырыны', '#f3e2a8'], ['yod', 'Йод ерітіндісі', '#a0522d'], ['biu', 'Биурет реактиві', '#7aa0d8'], ['sud', 'Судан III', '#e0703a'], ['ben', 'Бенедикт реактиві', '#5a8ad8']], n: 5, tools: ['shk', 'h100'],
+  steps: [['Картоп сығындысына йод тамыз', 'nan yod'], ['Жұмыртқа ағына биурет реактивін қос', 'jum biu'], ['Майға Судан III қосып шайқа', 'may sud @shk'], ['Алма шырынына Бенедикт реактивін қосып қыздыр', 'alma ben @h100']],
+  rules: [['nan yod', '#20204a', '', 'Көк-күлгін түс – крахмал бар'], ['alma ben @h100', '#c8501e', 'r', 'Кірпіш-қызыл тұнба – глюкоза бар'], ['nan ben @h100', '#4a8ac8', '', 'Көк түс сақталды – глюкоза жоқ'], ['jum ben @h100', '#4a8ac8', '', 'Көк түс сақталды – глюкоза жоқ'], ['ben', '#5a8ad8', '', 'Қыздырмаса реакция жүрмейді'], ['jum biu', '#8a3aa8', '', 'Күлгін түс – нәруыз бар'], ['nan biu', '#9a8ad0', '', 'Әлсіз күлгін – нәруыз аз'], ['biu', '#7aa0d8', '', 'Көк түс сақталды – нәруыз жоқ'], ['may sud', '#e8e0d0', 'lL', 'Майлы қабат қызыл-қызғылт боялды – май бар'], ['sud', '#f0a080', '', 'Бояу біркелкі – май жоқ'], ['yod', '#d8a060', '', 'Сары-қоңыр – крахмал жоқ']],
+  q: ['Нәтижені кесте түрінде жазыңыз (тағам – реактив – түс – зат).', 'Неліктен нанды шайнағанда тәттілеу дәм сезіледі?', 'Тәуліктік мәзірге қандай тағамдарды қосу керек?'] });
+BN('t14', { title: 'Су өсірінділері: азот, фосфор, калий тапшылығы', goal: 'Толық және жетіспейтін қоректік ерітінділерде өскіндерді өсіріп, макроэлементтер тапшылығының белгілерін анықтау.',
+  rg: [['osk', 'Бидай өскіні', '#a8d080'], ['tol', 'Толық қоректік ерітінді (Кноп)', '#dceef0'], ['nN', 'Азотсыз ерітінді', '#e2eef0'], ['nP', 'Фосфорсыз ерітінді', '#e2eef4'], ['nK', 'Калийсіз ерітінді', '#e2eef8'], ['su', 'Дистилденген су', '#e8f4f8']], n: 5, tools: ['light', 'wait'],
+  steps: [['Әр пробиркаға бір ерітінді құй', 'tol'], ['Әр пробиркаға өскін орнат', 'osk tol'], ['Пробиркаларды жарыққа қой', 'osk @light'], ['14 тәулік күт (күту батырмасын 14 рет бас)', 'osk @wait14']],
+  rules: [['osk tol @wait14', '#d4e8e8', 'sR', 'Өскін биік, жапырақтары қою жасыл – қалыпты өсу'], ['osk nN @wait14', '#d8eae8', 'syR', 'Өсу баяу, төменгі жапырақтар сарғайды – азот тапшылығы'], ['osk nP @wait14', '#d8eaea', 'sR', 'Жапырақ күлгін реңді, тамыр нашар дамыды – фосфор тапшылығы'], ['osk nK @wait14', '#d8eaee', 'syR', 'Жапырақ жиегі қоңырланып күйген – калий тапшылығы'], ['osk su @wait14', '#e0eef2', 'sy', 'Өскін әлсіз, тұқым қоры біткен соң өсу тоқтады'], ['osk', '#d8ecec', 's', 'Өскін орнатылды. Жарыққа қойып, күтіңіз']],
+  q: ['Әр элементтің тапшылық белгісін кестеге жазыңыз.', 'Неліктен азот жетіспегенде жапырақ сарғаяды?', 'Тыңайтқыштарды шамадан тыс қолданудың зияны.'] });
+BN('t15', { title: 'Боялған судың сабақпен көтерілуі', goal: 'Су мен минералды заттардың тамырдан жапыраққа өткізгіш ұлпа арқылы тасымалданатынын дәлелдеу.',
+  rg: [['bal', 'Балдыркөк (сельдерей) сабағы', '#a8d080'], ['eoz', 'Эозин (қызыл сия) ерітіндісі', '#e04060'], ['su', 'Таза су', '#dfeef6']], n: 3, tools: ['light', 'wait', 'mic'],
+  steps: [['1-пробиркаға қызыл сия құйып, сабақты сал', 'bal eoz'], ['2-пробиркаға таза су құйып, сабақты сал (бақылау)', 'bal su'], ['Жарыққа қойып, 1 тәулік күт', 'bal eoz @wait'], ['Сабақтың көлденең кесіндісін микроскоппен қара', 'bal eoz @wait @mic']],
+  rules: [['bal eoz @wait', '#d04060', 's', 'Жапырақ жүйкелері қызарды; кесіндіде тек өткізгіш шоқтар боялған', 'xylem:red'], ['bal su @wait', '#dfeef6', 's', 'Сабақ жасыл күйінде – су көрінбей көтерілді', 'xylem'], ['bal', '#dfeef6', 's', 'Сабақ ерітіндіге салынды. Күтіңіз'], ['eoz', '#e04060', '', 'Сия ерітіндісі']],
+  q: ['Сабақтың қай ұлпасы боялды? Неліктен?', 'Жарық пен жел тасымал жылдамдығына қалай әсер етеді?', 'Өсімдікте тасымалға қатысатын мүшелерді атаңыз.'] });
+BN('t16', { title: 'Тамыр мен сабақтың ішкі құрылысын препараттан зерттеу', goal: 'Тамыр мен сабақтың көлденең кесіндісін бояп, ұлпалардың орналасуын салыстыру.',
+  rg: [['tam', 'Тамырдың жұқа кесіндісі', '#f0e8d0'], ['sab', 'Сабақтың жұқа кесіндісі', '#d8e8b8'], ['saf', 'Сафранин бояуы', '#c8304a'], ['su', 'Су', '#dfeef6']], n: 3, tools: ['mic'],
+  steps: [['Тамыр кесіндісін сафранинмен боя', 'tam saf'], ['Сабақ кесіндісін сафранинмен боя', 'sab saf'], ['Екі препаратты микроскоппен қара', 'sab saf @mic']],
+  rules: [['sab saf', '#c8708a', '', 'Өткізгіш шоқтар сақина бойымен орналасқан (ксилема қызыл)', 'xylem:red'], ['tam saf', '#c88070', '', 'Ксилема ортада жұлдыз тәрізді, сыртында қыртыс қабаты', 'root'], ['sab', '#d8e8b8', '', 'Боялмаған кесінді: ұлпалар анық емес', 'xylem'], ['tam', '#f0e8d0', '', 'Боялмаған кесінді', 'clear']],
+  q: ['Тамыр мен сабақтағы өткізгіш шоқтардың орналасуын салыстырып сызыңыз.', 'Құрылысы мен қызметі арасындағы байланыс неде?', 'Тамыр аймақтарын атаңыз.'] });
+BN('t17', { title: 'Ксилеманы флороглюцинмен анықтау', goal: 'Сүректенген ксилема элементтерін арнайы реакциямен бояп, ксилема мен флоэманы ажырату.',
+  rg: [['kes', 'Сабақтың көлденең кесіндісі', '#d8e8b8'], ['flo', 'Флороглюцин ерітіндісі', '#f6eed0'], ['hcl', 'HCl (тұз қышқылы)', '#f4f4f0'], ['su', 'Су', '#dfeef6']], n: 3, tools: ['mic'],
+  steps: [['Кесіндіге флороглюцин тамыз', 'kes flo'], ['Үстіне HCl тамыз', 'kes flo hcl'], ['Микроскоппен қарап, боялған элементтерді анықта', 'kes flo hcl @mic']],
+  rules: [['kes flo hcl', '#c8406a', '', 'Ксилема түтіктері алқызыл боялды (лигнин бар), флоэма боялмады', 'xylem:red'], ['kes flo', '#e0e8b8', '', 'Қышқылсыз реакция жүрмеді', 'xylem'], ['kes', '#d8e8b8', '', 'Боялмаған кесінді', 'xylem']],
+  q: ['Ксилема мен флоэманың құрылысы мен қызметін салыстырыңыз.', 'Неліктен тек ксилема боялды?', 'Електі түтіктер мен серік жасушалардың рөлі.'] });
+BN('t18', { title: 'Дафнияның жүрек жұмысын бақылау', goal: 'Омыртқасыз жануардың қан айналым мүшесінің (жүрегінің) жұмысын микроскоппен бақылап, жиырылу жиілігін санау.',
+  rg: [['daf', 'Дафния (тамшыда)', '#d8e6c8'], ['su', 'Тоған суы', '#d8e4d0'], ['kof', 'Әлсіз кофеин ерітіндісі', '#c8a878']], n: 3, tools: ['mic', 'ice'],
+  steps: [['Дафнияны тоған суымен заттық әйнекке сал', 'daf su'], ['Микроскоппен қарап, 15 с ішінде жүрек соғуын сана', 'daf su @mic'], ['Басқа дафнияға кофеин қосып, қайта сана', 'daf kof @mic']],
+  rules: [['daf kof', '#d0c8a0', '', 'Жүрек жиілейді (≈ 300 соқ/мин) – кофеин қоздырады', 'daph:300'], ['daf @ice', '#d8e6c8', '', 'Жүрек баяулады (≈ 90 соқ/мин)', 'daph:90'], ['daf', '#d8e6c8', '', 'Жүрек ырғақты соғады (≈ 200 соқ/мин), гемолимфа дене қуысына құйылады', 'daph:200']],
+  q: ['Дафнияның қан айналымы ашық па, тұйық па?', 'Жүрек жиілігін 1 минутқа есептеңіз.', 'Жәндіктер мен омыртқалылардың қан айналымын салыстырыңыз.'] });
+BN('t19', { title: 'Жапырақ эпидермисіндегі лептесіктерді (устьицелерді) зерттеу', goal: 'Жапырақтың төменгі эпидермисін микроскоппен қарап, лептесіктердің құрылысы мен ашылып-жабылуын бақылау.',
+  rg: [['epi', 'Жапырақтың төменгі эпидермисі', '#d8ecc8'], ['su', 'Су', '#dfeef6'], ['tuz', 'NaCl 5% ерітіндісі', '#e8eef2']], n: 3, tools: ['light', 'dark', 'mic'],
+  steps: [['Эпидермисті су тамшысына салып, жарықта ұста', 'epi su @light'], ['Микроскоппен қарап, лептесіктерді сана', 'epi su @mic'], ['Басқа эпидермисті тұз ерітіндісіне сал', 'epi tuz'], ['Тұздағы препаратты қара', 'epi tuz @mic']],
+  rules: [['epi tuz', '#d8e8d0', '', 'Лептесіктер жабылды – бекітуші жасушалар суын жоғалтты', 'stomaC'], ['epi su @dark', '#d8ecc8', '', 'Қараңғыда лептесіктер жабық', 'stomaC'], ['epi su', '#d8ecc8', '', 'Бекітуші жасушалар ісінген, лептесіктер ашық', 'stomaO'], ['epi', '#d8ecc8', '', 'Эпидермис дайын', 'stomaO']],
+  q: ['Лептесікті сызып, бөліктерін белгілеңіз.', 'Лептесік не үшін ашылып-жабылады?', 'Жапырақтың ішкі құрылысы фотосинтезге қалай бейімделген?'] });
+BN('t20', { title: 'Фотосинтезге жарықтың қажеттілігін дәлелдеу (крахмалға сынама)', goal: 'Жарықта және қараңғыда тұрған жапырақтардағы крахмалды анықтап, фотосинтезге жарықтың қажет екенін дәлелдеу.',
+  rg: [['jar', 'Жарықта тұрған жапырақ', '#5aa84a'], ['qar', 'Екі тәулік қараңғыда тұрған жапырақ', '#7aa86a'], ['spi', 'Этил спирті', '#f4f4f4'], ['yod', 'Йод ерітіндісі', '#a0522d']], n: 3, tools: ['h37', 'h100'],
+  steps: [['Жапырақты қайнаған суда 1 мин ұстап, жасушаларын жұмсарт', 'jar @h100'], ['Жапырақты спиртке салып, су моншасында хлорофилін шығар', 'jar spi @h37'], ['Жапыраққа йод тамыз', 'jar spi yod'], ['Қараңғыдағы жапырақпен де қайтала', 'qar spi yod']],
+  rules: [['jar spi yod @h37', '#20204a', '', 'Жапырақ көк-қара боялды – крахмал түзілген (фотосинтез жүрген)'], ['qar spi yod @h37', '#c8a050', '', 'Жапырақ сары-қоңыр – крахмал жоқ (фотосинтез жүрмеген)'], ['spi yod', '#5a6a3a', '', 'Хлорофилл шықпағандықтан түсті ажырату қиын'], ['spi @h37', '#9ad06a', '', 'Спирт жасылданды – хлорофилл еріп шықты, жапырақ ағарды'], ['jar', '#5aa84a', '', 'Жасыл жапырақ'], ['qar', '#7aa86a', '', 'Жасыл жапырақ']],
+  q: ['Неліктен жапырақтан хлорофиллді шығарады?', 'Тәжірибе фотосинтез туралы не дәлелдейді?', 'Фотосинтезге қажетті тағы қандай жағдайлар бар?'] });
+BN('t21', { title: 'Ашытқының анаэробты тыныс алуы (ашу)', goal: 'Ашытқы саңырауқұлағының қантты ыдыратқанда көмірқышқыл газын бөлетінін және оған температураның әсерін дәлелдеу.',
+  rg: [['ash', 'Ашытқы суспензиясы', '#e8dcb8'], ['qan', 'Қант ерітіндісі', '#f6f2e6'], ['su', 'Су', '#dfeef6'], ['ak', 'Әк суы', '#eef2f2']], n: 4, tools: ['h37', 'ice', 'h100'],
+  steps: [['Ашытқы мен қантты араластырып, 37 °C-та ұста', 'ash qan @h37'], ['Ашытқы мен суды 37 °C-та ұста (бақылау)', 'ash su @h37'], ['Ашытқы мен қантты мұзда ұста', 'ash qan @ice'], ['Газды әк суына өткіз (1-пробиркаға әк суын қос)', 'ash qan ak @h37']],
+  rules: [['ash qan ak @h37', '#eeeeea', 'p', 'Әк суы лайланды – CO₂ бөлінген'], ['ash @h100', '#e0d4b0', '', 'Ашытқы өлді – көпіршік жоқ'], ['ash qan @h37', '#ece0b8', 'bfg', 'Көпіршік көп, шар үрленді – қарқынды ашу (CO₂)'], ['ash qan @ice', '#e8dcb8', '', 'Көпіршік жоқ – суықта ферменттер белсенді емес'], ['ash su', '#e8e0c4', '', 'Көпіршік жоқ – қант (энергия көзі) жоқ'], ['ash qan', '#ece0b8', 'b', 'Әлсіз көпіршіктер']],
+  q: ['Ашудың теңдеуін жазыңыз.', 'Аэробты және анаэробты тыныс алудың энергия шығымын салыстырыңыз.', 'Нан пісіруде ашытқы не үшін қолданылады?'] });
+BN('t22', { title: 'Өсімдіктердің тыныс алуын дәлелдеу', goal: 'Өніп келе жатқан тұқымдардың оттекті сіңіріп, көмірқышқыл газы мен жылу бөлетінін тәжірибеде дәлелдеу.',
+  rg: [['onu', 'Өніп келе жатқан бұршақ', '#d8e0a0'], ['qay', 'Қайнатылған бұршақ', '#d0c8a0'], ['ak', 'Әк суы', '#eef2f2']], n: 3, tools: ['dark', 'wait', 'fire'],
+  steps: [['1-колбаға өскен тұқым, 2-колбаға қайнатылған тұқым сал', 'onu'], ['Екеуін қараңғыда 1 тәулік ұста', 'onu @dark @wait'], ['Өскен тұқым колбасына жанған шырпы жақындат', 'onu @wait @fire'], ['Колбадағы ауаны әк суынан өткіз', 'onu ak @wait']],
+  rules: [['onu ak @wait', '#eeeeea', 'p', 'Әк суы лайланды – CO₂ бөлінген'], ['qay ak @wait', '#eef2f2', '', 'Әк суы мөлдір – өлі тұқым тыныс алмайды'], ['onu @wait @fire', '#d8e0a0', '', 'Шырпы бірден сөнді – оттек жұмсалған'], ['qay @wait @fire', '#d0c8a0', '', 'Шырпы жанып тұр – оттек жұмсалмаған'], ['onu @wait', '#d8e0a0', '', 'Колба жылыды (+3 °C) – энергия бөлінді'], ['qay', '#d0c8a0', '', 'Өзгеріс жоқ'], ['onu', '#d8e0a0', '', 'Тұқымдар салынды. Күтіңіз']],
+  q: ['Неліктен қайнатылған тұқым қажет болды?', 'Тыныс алу мен фотосинтездің айырмашылығы.', 'Тұқымды сақтау қоймасы неге желдетіледі?'] });
+BN('t24', { title: 'Дем шығарғандағы ауада көмірқышқыл газын анықтау', goal: 'Деммен шығарылған ауада көмірқышқыл газы бөлме ауасына қарағанда көп екенін дәлелдеу.',
+  rg: [['ak', 'Әк суы', '#eef2f2'], ['ind', 'Бромтимол көгі индикаторы', '#3a6ad0']], n: 3, tools: ['blow', 'wait'],
+  steps: [['1-пробиркаға әк суын құйып, түтікпен үрле', 'ak @blow'], ['2-пробиркаға әк суын құйып, тек күт (бөлме ауасы)', 'ak @wait'], ['3-пробиркаға индикатор құйып, үрле', 'ind @blow']],
+  rules: [['ak @blow', '#ececea', 'pb', 'Әк суы тез лайланды – дем ауасында CO₂ көп (≈ 4%)'], ['ak @wait', '#eef2f2', '', 'Әк суы мөлдір дерлік – бөлме ауасында CO₂ аз (0,04%)'], ['ind @blow', '#d8c840', 'b', 'Индикатор көктен сарыға ауысты – CO₂ ерітіндіні қышқылдандырды'], ['ak', '#eef2f2', '', 'Мөлдір әк суы'], ['ind', '#3a6ad0', '', 'Көк индикатор']],
+  q: ['Жұтылған және шығарылған ауаның құрамын салыстырыңыз.', 'CO₂ ағзада қай үдерісте түзіледі?', 'Тыныс алу мүшелерінің жолын ретімен жазыңыз.'] });
+BN('t25', { title: '«Темекі шегетін машина»: шайырды анықтау', goal: 'Темекі түтініндегі шайыр мен зиянды заттардың өкпеде жиналатынын модель-тәжірибе арқылы көрсету.',
+  rg: [['mak', 'Ақ мақта (өкпе моделі)', '#f8f8f8'], ['tut', 'Темекі түтіні (1 темекі)', '#a8a090'], ['ak', 'Әк суы', '#eef2f2'], ['su', 'Таза ауа', '#eef6fa']], n: 3, tools: ['wait', 'mic'],
+  steps: [['1-пробиркадағы мақтадан темекі түтінін өткіз', 'mak tut'], ['2-пробиркадағы мақтадан таза ауа өткіз (бақылау)', 'mak su'], ['Мақтаны микроскоппен қара', 'mak tut @mic'], ['Түтінді әк суынан өткіз', 'ak tut']],
+  rules: [['mak tut', '#a8783a', 'a', 'Мақта сарғыш-қоңыр түсті болды – шайыр жиналды', 'tar'], ['mak su', '#f8f8f8', '', 'Мақта ақ күйінде', 'clear'], ['ak tut', '#e6e4dc', 'p', 'Әк суы лайланды – түтінде CO₂ және басқа газдар бар']],
+  q: ['Темекі шайыры өкпенің қандай ауруларына әкеледі?', 'Пассивті шегудің зияны.', 'Тыныс алу жолдарының аурулары мен алдын алу шаралары.'] });
+BN('t26', { title: 'Несепнәрді анықтау (уреаза ферменті)', goal: 'Зат алмасудың соңғы өнімі – несепнәрді уреаза арқылы анықтап, бөліп шығарудың маңызын түсіндіру.',
+  rg: [['nes', 'Несепнәр ерітіндісі', '#f4f2e8'], ['ter', 'Тер үлгісі (модель)', '#f2f0e8'], ['su', 'Дистилденген су', '#e8f4f8'], ['ure', 'Уреаза (соя ұны)', '#e8dcb8'], ['fen', 'Фенолфталеин', '#f8f8f8']], n: 4, tools: ['h37'],
+  steps: [['Несепнәрге уреаза мен фенолфталеин қос', 'nes ure fen'], ['37 °C-та 10 мин ұста', 'nes ure fen @h37'], ['Тер үлгісімен қайтала', 'ter ure fen @h37'], ['Сумен бақылау тәжірибесін жаса', 'su ure fen @h37']],
+  rules: [['nes ure fen @h37', '#e0408a', '', 'Таңқурай түсті болды – несепнәр аммиакқа ыдырады'], ['ter ure fen @h37', '#f0a0c0', '', 'Әлсіз қызғылт – терде несепнәр аз мөлшерде бар'], ['su ure fen @h37', '#ecdcb8', '', 'Түс өзгермеді – несепнәр жоқ'], ['ure fen', '#ecdcb8', '', 'Реакция жүру үшін жылыту керек']],
+  q: ['Несепнәр қай заттардың ыдырауынан түзіледі?', 'Адамда бөліп шығаруға қатысатын мүшелер мен олар шығаратын заттар.', 'Зат алмасу өнімдері шықпаса, ағзаға не болады?'] });
+BN('t27', { title: 'Транспирацияны кобальт хлориді қағазымен анықтау', goal: 'Өсімдіктің суды жапырақ арқылы бу түрінде бөлетінін және оның жапырақтың қай бетінде көп екенін анықтау.',
+  rg: [['jap', 'Тірі жапырақ', '#5aa84a'], ['ok', 'Кептірілген жапырақ', '#b8a060'], ['kob', 'Кобальт хлориді қағазы (көк)', '#3a6ad0']], n: 3, tools: ['light', 'wait'],
+  steps: [['Тірі жапыраққа кобальт қағазын жапсырып, жарыққа қой', 'jap kob @light'], ['30 мин (1 рет) күт', 'jap kob @wait'], ['Кептірілген жапырақпен бақылау жаса', 'ok kob @wait']],
+  rules: [['jap kob @wait', '#e090a8', '', 'Қағаз көктен қызғылтқа ауысты – жапырақ су буын бөлді'], ['ok kob @wait', '#3a6ad0', '', 'Қағаз көк күйінде – өлі жапырақ су бөлмейді'], ['kob', '#3a6ad0', '', 'Көк қағаз (құрғақ)']],
+  q: ['Транспирация мен гуттацияның айырмашылығы.', 'Өсімдікте зиянды заттар қалай шығарылады (жапырақ түсу, шайыр)?', 'Қай бетінде су көп бөлінді? Неліктен?'] });
+BN('t28', { title: 'Кебісшенің жиырылғыш вакуолін бақылау', goal: 'Қарапайымдылардағы бөліп шығару органоиды – жиырылғыш вакуольдің жұмысын ортаның тұздылығына байланысты бақылау.',
+  rg: [['keb', 'Кебісше мәдениеті', '#d8e4c8'], ['su', 'Тұщы су', '#dfeef6'], ['tuz', 'NaCl 0,5% ерітіндісі', '#e8eef2']], n: 3, tools: ['mic'],
+  steps: [['Кебісшені тұщы сумен заттық әйнекке тамыз', 'keb su'], ['Микроскоппен вакуольдің жиырылуын сана', 'keb su @mic'], ['Тұз ерітіндісі қосып, қайта қара', 'keb tuz @mic']],
+  rules: [['keb tuz', '#d8e2cc', '', 'Вакуоль сирек жиырылады (≈ 1 рет/мин), кіші', 'para:1'], ['keb', '#d8e4c8', '', 'Вакуоль жиі жиырылады (≈ 10 рет/мин), үлкен', 'para:6']],
+  q: ['Тұщы суда вакуоль неге жиі жиырылады?', 'Жауынқұрт пен жәндіктердің бөліп шығару мүшелерін атаңыз.', 'Жиырылғыш вакуоль мен бүйректің ортақ қызметі.'] });
+BN('t29', { title: 'Өскіндердің фото- және геотропизмі', goal: 'Өскіннің бір жақты жарыққа және ауырлық күшіне жауап ретінде иілуін бақылау.',
+  rg: [['osk', 'Бұршақ өскіні (ылғалды мақтада)', '#a8d080'], ['su', 'Су', '#dfeef6']], n: 3, tools: ['one', 'side', 'dark', 'wait'],
+  steps: [['1-пробиркадағы өскінге бір жақты жарық түсір', 'osk @one'], ['2-пробирканы жатқызып, қараңғыға қой', 'osk @side'], ['3-пробирканы тік, қараңғыда қалдыр (бақылау)', 'osk @dark'], ['Барлығын 3 тәулік күт', 'osk @wait3']],
+  rules: [['osk @one @wait3', '#dfeef6', 's', 'Сабақ жарыққа қарай иілді – оң фототропизм'], ['osk @side @wait3', '#dfeef6', 'sR', 'Сабақ жоғары, тамыр төмен иілді – геотропизм'], ['osk @wait3', '#dfeef6', 'sy', 'Қараңғыда сабақ созылып, сарғайды, тік өсті'], ['osk', '#dfeef6', 's', 'Өскін орнатылды. Жағдайды таңдап, күтіңіз']],
+  q: ['Сабақтың жарыққа иілу себебін ауксин арқылы түсіндіріңіз.', 'Тропизм, настия және таксистің айырмашылығы.', 'Бөлме өсімдіктерін неге бұрып қояды?'] });
+BN('t30', { title: 'Қарапайымдылардың қозғалыс органоидтарын бақылау', goal: 'Амёба, эвглена және кебісшенің қозғалыс тәсілдерін микроскоп арқылы салыстыру.',
+  rg: [['tog', 'Тоған суы тамшысы', '#d8e4c8'], ['keb', 'Кебісше мәдениеті', '#d8e4c8'], ['jel', 'Желатин (баяулату үшін)', '#f6f0d8'], ['tus', 'Тушь (түйіршіктер)', '#333333']], n: 3, tools: ['mic'],
+  steps: [['Тоған суының тамшысын микроскоппен қара', 'tog @mic'], ['Кебісшеге желатин қосып, баяулат', 'keb jel'], ['Тушь қосып, кірпікшелердің қимылын қара', 'keb jel tus @mic']],
+  rules: [['keb jel tus', '#9aa088', '', 'Кірпікшелер толқынды қимылдап, тушь түйіршіктерін айдайды', 'cil'], ['keb jel', '#e0e4c8', '', 'Кебісше баяу жүзеді, кірпікшелері көрінеді', 'cil'], ['tog', '#d8e4c8', '', 'Амёба жалған аяқпен, эвглена талшықпен қозғалады', 'protists'], ['keb', '#d8e4c8', '', 'Кебісшелер тез жүзеді – санау қиын', 'para:3']],
+  q: ['Псевдоподия, талшық және кірпікшелердің айырмашылығын кестеге жазыңыз.', 'Көп жасушалы жануарлардың қозғалыс мүшелеріне мысал.', 'Қозғалыстың тіршілік үшін маңызы.'] });
+BN('t38', { title: 'Алкогольдің тірі ағзаға әсері (дафния мен нәруыз)', goal: 'Этил спиртінің дафнияның жүрек жұмысына және нәруызға әсерін бақылап, алкогольдің жүйке жүйесіне зиянын түсіндіру.',
+  rg: [['daf', 'Дафниялар бар су', '#d8e6c8'], ['spi', 'Этил спирті 2%', '#f4f4f4'], ['jum', 'Жұмыртқа ағы', '#f2efe0'], ['sp96', 'Этил спирті 70%', '#f8f8f8']], n: 3, tools: ['mic', 'shk'],
+  steps: [['Дафнияның жүрек соғуын сана', 'daf @mic'], ['Дафнияға 2% спирт қосып, қайта сана', 'daf spi @mic'], ['Жұмыртқа ағына 70% спирт қосып шайқа', 'jum sp96 @shk']],
+  rules: [['daf spi', '#d8e4c8', '', 'Жүрек соғуы баяулап (≈ 90 соқ/мин), дафниялар қозғалмай қалды', 'daph:90'], ['daf', '#d8e6c8', '', 'Жүрек қалыпты соғады (≈ 200 соқ/мин)', 'daph:200'], ['jum sp96', '#f4f2ee', 'c', 'Ақ ұйыма түзілді – нәруыз денатурацияланды'], ['jum', '#f2efe0', '', 'Мөлдір нәруыз']],
+  q: ['Алкоголь жүйке жасушаларына неге зиянды?', 'Тәжірибе нәтижесін жасөспірімдерге арналған ескертумен байланыстырыңыз.', 'Темекі мен есірткінің жүйке жүйесіне әсері.'] });
+BN('t40', { title: 'Пияз тамыр ұшындағы хромосомаларды бақылау', goal: 'Пияз тамыр ұшының препаратын дайындап, хромосомаларды көріп, санын анықтау.',
+  rg: [['tam', 'Пияз тамыр ұшы', '#f4ecd8'], ['hcl', 'HCl 1М (жұмсарту)', '#f4f4f0'], ['ats', 'Ацетокармин бояуы', '#b8304a']], n: 3, tools: ['h37', 'mic'],
+  steps: [['Тамыр ұшына HCl қосып, 37 °C-та 5 мин жұмсарт', 'tam hcl @h37'], ['Ацетокарминмен боя', 'tam hcl ats'], ['Жаншып, микроскоппен қара', 'tam hcl ats @mic']],
+  rules: [['tam hcl ats @h37', '#b04060', '', 'Метафазадағы жасушада 16 хромосома (2n = 16) көрінеді', 'chrom'], ['tam ats', '#c06070', '', 'Жасушалар бір-бірінен ажырамаған – алдымен жұмсарту керек', 'onion'], ['tam', '#f4ecd8', '', 'Боялмаған ұлпа', 'clear']],
+  q: ['Пиязда 2n = 16. Жыныс жасушасында неше хромосома бар?', 'Соматикалық және жыныс жасушаларының айырмашылығы.', 'Хромосома санының тұрақтылығы неге маңызды?'] });
+BN('t41', { title: 'Ашытқының бүршіктенуі – жыныссыз көбею', goal: 'Ашытқы саңырауқұлағының бүршіктену арқылы жыныссыз көбеюін бақылап, жынысты көбеюмен салыстыру.',
+  rg: [['ash', 'Ашытқы', '#e8dcb8'], ['qan', 'Қант ерітіндісі', '#f6f2e6'], ['su', 'Су', '#dfeef6']], n: 3, tools: ['h37', 'mic'],
+  steps: [['Ашытқы мен қантты араластыр', 'ash qan'], ['37 °C-та ұста', 'ash qan @h37'], ['Микроскоппен бүршіктерді қара', 'ash qan @h37 @mic']],
+  rules: [['ash qan @h37', '#ece0b8', 'b', 'Көптеген жасушаларда бүршіктер (жас жасушалар) пайда болды', 'bud'], ['ash', '#e8dcb8', '', 'Жеке сопақ жасушалар, бүршік аз', 'yeast']],
+  q: ['Бүршіктену қалай жүреді? Сызыңыз.', 'Жыныссыз және жынысты көбеюдің 2 айырмашылығы.', 'Өсімдіктердің спорамен көбеюіне мысал.'] });
+BN('t42', { title: 'Қалемшелердің тамырлануы', goal: 'Сабақ қалемшесінің суда және өсу стимуляторы ерітіндісінде тамырлануын салыстыру.',
+  rg: [['qal', 'Тал (бөлме гүлі) қалемшесі', '#7ab05a'], ['su', 'Су', '#dfeef6'], ['aux', 'Өсу стимуляторы (ауксин)', '#f0e8c8'], ['tuz', 'Тұзды су', '#e8eef2']], n: 3, tools: ['light', 'wait'],
+  steps: [['1-пробиркаға су құйып, қалемше сал', 'qal su !aux'], ['2-пробиркаға су + ауксин құйып, қалемше сал', 'qal aux'], ['3-пробиркаға тұзды су құйып, қалемше сал', 'qal tuz'], ['Жарыққа қойып, 7 тәулік күт', 'qal @wait7']],
+  rules: [['qal aux @wait7', '#e4ecd8', 'sR', 'Көптеген ұзын тамырлар шықты – стимулятор тамырлануды жеделдетті'], ['qal tuz @wait7', '#e4eacc', 'sy', 'Тамыр шықпады, қалемше солды'], ['qal @wait7', '#e0ece8', 'sR', 'Бірнеше қысқа тамыр шықты'], ['qal', '#e0eef0', 's', 'Қалемше суға салынды. Күтіңіз']],
+  q: ['Вегетативтік көбеюдің тағы 3 тәсілін атаңыз.', 'Ауксин қандай рөл атқарды?', 'Вегетативтік көбеюдің шаруашылықтағы маңызы.'] });
+BN('t43', { title: 'Тозаңның өнуі (тозаң түтігінің түзілуі)', goal: 'Тозаң түйіршіктерін қант ерітіндісінде өсіріп, ұрықтану алдындағы тозаң түтігінің түзілуін бақылау.',
+  rg: [['toz', 'Гүл тозаңы', '#e8c040'], ['q10', 'Қант 10% ерітіндісі', '#f6f2e6'], ['su', 'Су', '#dfeef6'], ['q40', 'Қант 40% ерітіндісі', '#f8f0d8']], n: 3, tools: ['h37', 'wait', 'mic'],
+  steps: [['Тозаңды 10% қант ерітіндісіне сал', 'toz q10'], ['Жылы жерде 1 сағат ұста (күту)', 'toz q10 @wait'], ['Микроскоппен тозаң түтіктерін қара', 'toz q10 @wait @mic'], ['Су мен 40% қантта да тексер', 'toz q40 @wait']],
+  rules: [['toz q10 @wait', '#ece0b0', '', 'Тозаң түйіршіктерінен ұзын тозаң түтіктері өсті', 'pollen'], ['toz q40 @wait', '#ecdcb0', '', 'Тозаң өнбеді – ерітінді тым қою (су шығып кетеді)', 'pollen0'], ['toz su @wait', '#e4e0c0', '', 'Тозаң ісініп жарылды – тым сұйық орта', 'pollen0'], ['toz', '#ece0b0', '', 'Тозаң түйіршіктері ерітіндіде', 'pollen0']],
+  q: ['Тозаң түтігі не үшін қажет?', 'Қосарлы ұрықтануды сызба түрінде көрсетіңіз.', 'Айқас тозаңданудың артықшылығы.'] });
+BN('t44', { title: 'Тұқымның өнуіне қажетті жағдайлар', goal: 'Тұқымның өнуі үшін су, жылу және ауаның (оттектің) қажет екенін салыстырмалы тәжірибемен дәлелдеу.',
+  rg: [['tuq', 'Бұршақ тұқымдары', '#d8c890'], ['su', 'Аз су (ылғалды мақта)', '#dfeef6'], ['kop', 'Көп су (толық батыру)', '#c8e0ee'], ['may', 'Өсімдік майы қабаты', '#f0d860']], n: 4, tools: ['ice', 'wait'],
+  steps: [['1-пробирка: тұқым + ылғалды мақта, бөлме температурасы', 'tuq su !@ice !kop'], ['2-пробирка: тұқым, су жоқ (құрғақ)', 'tuq !su !kop'], ['3-пробирка: тұқым + ылғалды мақта, тоңазытқышта', 'tuq su @ice'], ['4-пробирка: тұқымды суға батырып, бетін маймен жап', 'tuq kop may'], ['Барлығын 5 тәулік күт', 'tuq @wait5']],
+  rules: [['tuq su @ice @wait5', '#d8e6ee', '', 'Тұқым ісінді, бірақ өнбеді – жылу жетіспейді'], ['tuq kop may @wait5', '#d0dcc8', 'l', 'Өнбеді – оттек жоқ'], ['tuq su @wait5', '#dceee8', 'sR', 'Тұқым өнді: тамыр мен өскін шықты'], ['tuq @wait5', '#d8c890', '', 'Құрғақ тұқым өзгермеді – су жоқ'], ['tuq', '#d8c890', '', 'Тұқым орналастырылды']],
+  q: ['Тұқымның өнуіне қандай 3 жағдай қажет?', 'Неліктен суға батырылған тұқым өнбеді?', 'Өсімдіктің өсу және даму ұғымдарының айырмашылығы.'] });
+BN('t46', { title: 'Бактериялардың пішіндерін бояп зерттеу', goal: 'Йогурт пен шөп тұнбасындағы бактерияларды бояп, олардың пішіндерін (таяқша, шар) микроскоппен анықтау.',
+  rg: [['jog', 'Йогурт', '#f6f4ec'], ['tun', 'Шөп тұнбасы (пішен таяқшасы)', '#d8cc98'], ['tis', 'Тіс өңезі (таяқшамен)', '#f4f0e8'], ['met', 'Метилен көгі', '#3a5ab0']], n: 3, tools: ['h100', 'mic'],
+  steps: [['Йогурт жағындысын жалынға ұстап бекіт', 'jog @h100'], ['Метилен көгімен боя', 'jog met'], ['Микроскоппен қара', 'jog met @mic'], ['Тіс өңезі жағындысын бояп қара', 'tis met @mic']],
+  rules: [['jog met', '#6a80c8', '', 'Таяқша тәрізді бактериялар (лактобацилла)', 'bact'], ['tun met', '#7088c0', '', 'Ұзын таяқшалар тізбегі (бацилла)', 'bact'], ['tis met', '#7a88c8', '', 'Шар тәрізді (кокк) және таяқша бактериялар', 'cocci'], ['jog', '#f6f4ec', '', 'Боялмаған – бактериялар көрінбейді', 'clear']],
+  q: ['Бактериялардың 4 пішінін сызыңыз (кокк, бацилла, вибрион, спирилла).', 'Неліктен препаратты бояйды?', 'Тіс өңезіндегі бактериялар қандай ауруға әкеледі?'] });
+BN('t47', { title: 'Сүт қышқылы бактерияларымен йогурт дайындау', goal: 'Сүт қышқылы бактерияларының әрекетінен сүттің ұюын және қышқылдануын бақылау.',
+  rg: [['sut', 'Пастерленген сүт', '#f8f8f2'], ['zak', 'Йогурт ұйытқысы', '#f4f2ea'], ['ind', 'Әмбебап индикатор', '#e8c040']], n: 4, tools: ['h37', 'ice', 'wait', 'mic'],
+  steps: [['Сүтке ұйытқы қос', 'sut zak'], ['37 °C-та ұстап, 1 тәулік күт', 'sut zak @h37 @wait'], ['Ұйытқылы сүтті тоңазытқышта күт (салыстыру)', 'sut zak @ice @wait'], ['Йогурттың pH мәнін тексер', 'sut zak ind @h37 @wait'], ['Йогурт тамшысын микроскоппен қара', 'sut zak @h37 @wait @mic']],
+  rules: [['sut zak ind @h37 @wait', '#e0703a', '', 'Индикатор қызғылт-сары: pH ≈ 4,5 – сүт қышқылы түзілді'], ['sut ind', '#c8d040', '', 'Сары-жасыл: pH ≈ 6,6 (бастапқы сүт)'], ['sut zak @h37 @wait', '#f6f2e0', 'c', 'Сүт ұйыды – йогурт дайын', 'bact'], ['sut zak @ice @wait', '#f8f8f2', '', 'Сүт сұйық күйінде – суықта бактериялар баяу', 'bact'], ['sut zak', '#f8f6ee', '', 'Ұйытқы қосылды. Жылыда күтіңіз', 'bact']],
+  q: ['Лактоза қандай затқа айналды?', 'Йогурт неге тоңазытқышта ұзақ сақталады?', 'Бактериялар пайдаланылатын тағы 3 өндіріс.'] });
+BN('t48', { title: 'Антисептиктердің бактерияларға әсері', goal: 'Әртүрлі антисептиктердің бактериялардың көбеюін тежеуін қоректік ортаның лайлануы арқылы салыстыру.',
+  rg: [['bul', 'Ет-пептонды сорпа + бактериялар', '#f0e8c8'], ['su', 'Су', '#dfeef6'], ['spi', 'Спирт 70%', '#f8f8f8'], ['yod', 'Йод ерітіндісі', '#a0522d'], ['sab', 'Сабын ерітіндісі', '#f6f6f0']], n: 4, tools: ['h37', 'wait'],
+  steps: [['Сорпаға су қосып, 37 °C-та 1 тәулік ұста (бақылау)', 'bul su @h37 @wait'], ['Сорпаға спирт қосып, ұста', 'bul spi @wait'], ['Сорпаға йод қосып, ұста', 'bul yod @wait'], ['Сорпаға сабын қосып, ұста', 'bul sab @wait']],
+  rules: [['bul spi @wait', '#f2ecd0', '', 'Сорпа мөлдір – бактериялар жойылды'], ['bul yod @wait', '#d8a860', '', 'Сорпа мөлдір – бактериялар жойылды'], ['bul sab @wait', '#e8e0c4', '', 'Сорпа сәл лайлы – бактериялар азайды'], ['bul @h37 @wait', '#c8b888', 'f', 'Сорпа қатты лайланды, иіс шықты – бактериялар көбейді'], ['bul @wait', '#d0c090', '', 'Сорпа лайланды'], ['bul', '#f0e8c8', '', 'Мөлдір сорпа']],
+  q: ['Антисептик пен антибиотиктің айырмашылығы.', 'Жараны неге йодпен немесе спиртпен өңдейді?', 'Антибиотикті дәрігерсіз ішуге неге болмайды?'] });
+
+/* ================= 8-СЫНЫП: пробиркалық тәжірибелер ================= */
+BN('1', { title: 'Прокариот және эукариот жасушаларын салыстыру', goal: 'Бактерия, пияз және ұрт эпителийі жасушаларының препаратын дайындап, прокариот пен эукариот жасушаларын ажырату.',
+  rg: [['jog', 'Йогурт (бактериялар)', '#f6f4ec'], ['piy', 'Пияз қабығы', '#f0e6c8'], ['urt', 'Ұрт эпителийі', '#f4e8e4'], ['met', 'Метилен көгі', '#3a5ab0'], ['yod', 'Йод ерітіндісі', '#a0522d']], n: 3, tools: ['mic'],
+  steps: [['Йогурт жағындысын метилен көгімен бояп қара', 'jog met @mic'], ['Пияз қабығын йодпен бояп қара', 'piy yod @mic'], ['Ұрт эпителийін метилен көгімен бояп қара', 'urt met @mic']],
+  rules: [['jog met', '#6a80c8', '', 'Ядросыз ұсақ таяқшалар – прокариоттар', 'bact'], ['piy yod', '#c8a060', '', 'Ядро, жасуша қабырғасы, вакуоль бар – эукариот (өсімдік)', 'onionI'], ['urt met', '#8a9ad0', '', 'Ядро бар, қабырғасы жоқ – эукариот (жануар)', 'cheek'], ['jog yod', '#e8dcc0', '', 'Йодпен бактериялар нашар боялады', 'clear']],
+  q: ['Прокариот пен эукариот жасушасының 4 айырмашылығын кестеге жазыңыз.', 'Бактериялардың өлшемін жасушалармен салыстырыңыз.', 'Митохондрия мен рибосоманың қызметі.'] });
+BN('3', { title: 'Полимердің мономерге ыдырауы: крахмал → глюкоза', goal: 'Сілекей амилазасының крахмалды (полимер) глюкозаға (мономер) ыдыратуын йод және Бенедикт сынамаларымен дәлелдеу.',
+  rg: [['kr', 'Крахмал ерітіндісі', '#f2f0ea'], ['sil', 'Сұйылтылған сілекей (амилаза)', '#f0f0e4'], ['su', 'Су', '#dfeef6'], ['yod', 'Йод ерітіндісі', '#a0522d'], ['ben', 'Бенедикт реактиві', '#5a8ad8']], n: 4, tools: ['h37', 'h100'],
+  steps: [['1-пробирка: крахмал + сілекей, 37 °C', 'kr sil @h37'], ['2-пробирка: крахмал + су, 37 °C (бақылау)', 'kr su @h37'], ['1-пробиркаға йод тамыз', 'kr sil yod @h37'], ['Крахмал + сілекей қоспасына Бенедикт қосып қыздыр', 'kr sil ben @h100']],
+  rules: [['kr sil yod @h37', '#e8d8a8', '', 'Йод көгермеді – крахмал (полимер) ыдырады'], ['kr yod', '#20204a', '', 'Көк-күлгін – крахмал бар'], ['kr sil ben @h37 @h100', '#c8501e', 'r', 'Кірпіш-қызыл тұнба – глюкоза (мономер) түзілді'], ['kr sil ben @h100', '#9a6a5a', 'r', 'Әлсіз тұнба – амилаза аз уақыт әсер етті'], ['kr ben @h100', '#4a8ac8', '', 'Көк – глюкоза жоқ (крахмал Бенедиктпен әрекеттеспейді)'], ['ben', '#5a8ad8', '', 'Қыздыру керек']],
+  q: ['Полимер мен мономерге 3 мысал келтіріңіз.', 'Амилаза қай жерде бөлінеді?', 'Нәруыздың мономері не?'] });
+BN('4', { title: 'Көмірсулар мен липидтерді анықтау', goal: 'Йод, Бенедикт және Судан III реакциялары арқылы тағамдағы крахмалды, глюкозаны және майды анықтау.',
+  rg: [['kar', 'Картоп сығындысы', '#efe6cc'], ['jus', 'Жүзім шырыны', '#e8d0a0'], ['jan', 'Жаңғақ ұнтағы + су', '#e8dcc0'], ['yod', 'Йод ерітіндісі', '#a0522d'], ['ben', 'Бенедикт реактиві', '#5a8ad8'], ['sud', 'Судан III', '#e0703a']], n: 5, tools: ['h100', 'shk'],
+  steps: [['Картоп сығындысына йод тамыз', 'kar yod'], ['Жүзім шырынына Бенедикт қосып қыздыр', 'jus ben @h100'], ['Жаңғаққа Судан III қосып шайқа', 'jan sud @shk'], ['Картопты Бенедиктпен тексер', 'kar ben @h100']],
+  rules: [['kar yod', '#20204a', '', 'Көк-күлгін – крахмал (полисахарид) бар'], ['jus ben @h100', '#c8501e', 'r', 'Кірпіш-қызыл тұнба – глюкоза (моносахарид) бар'], ['kar ben @h100', '#5a90c8', '', 'Көк – глюкоза аз/жоқ'], ['jan ben @h100', '#5a90c8', '', 'Көк – глюкоза жоқ'], ['jan sud', '#e8dcc0', 'lL', 'Қызыл май тамшылары – липид бар'], ['kar sud', '#f0a080', '', 'Бояу біркелкі – май жоқ'], ['jus yod', '#d8a060', '', 'Сары-қоңыр – крахмал жоқ'], ['ben', '#5a8ad8', '', 'Қыздыру керек']],
+  q: ['Моно-, ди- және полисахаридтерге мысал.', 'Липидтердің 3 қызметін жазыңыз.', 'Неліктен май – ең энергиялы зат?'] });
+BN('5', { title: 'Нәруыздарды анықтау және денатурациясы', goal: 'Биурет және ксантопротеин реакциялары арқылы нәруызды анықтап, температура мен спирттің әсерінен денатурацияны бақылау.',
+  rg: [['jum', 'Жұмыртқа ағы ерітіндісі', '#f2efe0'], ['biu', 'Биурет реактиві', '#7aa0d8'], ['hno', 'HNO₃ (концентрлі)', '#f4f4ec'], ['spi', 'Этил спирті', '#f6f6f6'], ['su', 'Су', '#dfeef6']], n: 4, tools: ['h100', 'shk'],
+  steps: [['Жұмыртқа ағына биурет реактивін қос', 'jum biu'], ['Жұмыртқа ағына азот қышқылын қосып, абайлап қыздыр', 'jum hno @h100'], ['Жұмыртқа ағын қайнат', 'jum @h100 !hno !biu'], ['Жұмыртқа ағына спирт қосып шайқа', 'jum spi']],
+  rules: [['jum biu', '#8a3aa8', '', 'Күлгін түс – пептидтік байланыстар бар (нәруыз)'], ['jum hno @h100', '#e8b830', 'c', 'Сары түс – ксантопротеин реакциясы (хош иісті амин қышқылдары)'], ['jum hno', '#f4f2ea', 'c', 'Ақ ұйыма – қышқыл нәруызды ұйытты'], ['jum spi', '#f6f4ee', 'c', 'Ақ ұйыма – спирт нәруызды денатурациялады'], ['jum @h100', '#f8f8f4', 'c', 'Ақ ұйыма – нәруыз қайтымсыз денатурацияланды'], ['su biu', '#7aa0d8', '', 'Көк – нәруыз жоқ (бақылау)']],
+  q: ['Нәруыздың құрылымдық деңгейлерін атаңыз.', 'Денатурация дегеніміз не? Қайтымды және қайтымсыз мысал.', 'Нәруыздың 4 қызметін жазыңыз.'] });
+BN('7', { title: 'Зең саңырауқұлақтары мен ашытқыларды микроскоппен зерттеу', goal: 'Мукор, пеницилл және ашытқы препараттарын дайындап, саңырауқұлақтардың құрылысын салыстыру.',
+  rg: [['muk', 'Нандағы ақ зең (мукор)', '#f0f0ec'], ['pen', 'Цитрус қабығындағы көк зең (пеницилл)', '#7ab09a'], ['ash', 'Ашытқы + қант', '#e8dcb8'], ['su', 'Су тамшысы', '#dfeef6']], n: 3, tools: ['h37', 'mic'],
+  steps: [['Ақ зеңнен үлгі алып, су тамшысына сал', 'muk su'], ['Мукорды микроскоппен қара', 'muk @mic'], ['Көк зеңді микроскоппен қара', 'pen @mic'], ['Ашытқыны жылытып, микроскоппен қара', 'ash @h37 @mic']],
+  rules: [['muk', '#eeeeea', '', 'Тармақталған гифалар ұшында қара шар тәрізді спорангийлер – мукор', 'mold'], ['pen', '#8ab8a0', '', 'Гифалар ұшында щетка тәрізді спора тізбектері – пеницилл', 'mold:pen'], ['ash @h37', '#ece0b8', 'b', 'Бір жасушалы сопақ жасушалар, бүршіктенеді – ашытқы', 'bud'], ['ash', '#e8dcb8', '', 'Ашытқы жасушалары', 'yeast']],
+  q: ['Мукор мен пенициллдің құрылысын салыстырып сызыңыз.', 'Саңырауқұлақтардың өсімдіктер мен жануарларға ұқсас белгілері.', 'Пенициллиннің медицинадағы маңызы.'] });
+BN('11', { title: 'Тіс кіреукесіне қышқылдың әсері (жұмыртқа қабығы моделі)', goal: 'Тіс кіреукесіне ұқсас кальций қосылыстарының қышқыл сусындарда бұзылуын модель арқылы көрсетіп, тіс гигиенасының маңызын түсіндіру.',
+  rg: [['qab', 'Жұмыртқа қабығы (кіреуке моделі)', '#f6efe0'], ['sir', 'Сірке суы (қышқыл)', '#f4f4ea'], ['kol', 'Газдалған тәтті сусын', '#5a2a1a'], ['su', 'Су', '#dfeef6'], ['ftor', 'Фторлы тіс пастасы', '#f8f8fc']], n: 4, tools: ['wait'],
+  steps: [['Қабықты сірке суына сал', 'qab sir'], ['Қабықты тәтті сусынға сал', 'qab kol'], ['Қабықты суға сал (бақылау)', 'qab su'], ['Фторлы пастамен өңделген қабықты сірке суына сал', 'qab ftor sir'], ['1 тәулік күт', 'qab @wait']],
+  rules: [['qab ftor sir @wait', '#efeee6', 'b', 'Көпіршік аз, қабық қатты күйінде – фтор кіреукені қорғайды'], ['qab sir @wait', '#efeee6', 'b', 'Көп көпіршік, қабық жұмсарып еріді (CO₂ бөлінді)'], ['qab kol @wait', '#4a2a1a', 'b', 'Қабық қоңыр түске боялып, жұмсарды'], ['qab su @wait', '#e0eef4', '', 'Өзгеріс жоқ'], ['qab sir', '#efeee6', 'b', 'Көпіршіктер шыға бастады'], ['qab', '#e8eef0', '', 'Қабық салынды. Күтіңіз']],
+  q: ['Тіс жегісі қалай пайда болады?', 'Фтор кіреукені қалай қорғайды?', 'Тіс гигиенасының 4 ережесі.'] });
+BN('13', { title: 'Жуылмаған жеміс бетіндегі бактериялар', goal: 'Жуылған және жуылмаған жемістердің шайындысындағы бактерияларды қоректік ортада өсіріп, тамақ гигиенасының маңызын дәлелдеу.',
+  rg: [['bul', 'Стерильді сорпа', '#f0e8c8'], ['juq', 'Жуылмаған алма шайындысы', '#d8cca8'], ['juy', 'Ағын сумен жуылған алма шайындысы', '#e8e0c8'], ['qay', 'Қайнаған сумен шайылған алма', '#efe8d0']], n: 4, tools: ['h37', 'wait', 'mic'],
+  steps: [['Сорпаға жуылмаған алма шайындысын қос', 'bul juq'], ['Сорпаға жуылған алма шайындысын қос', 'bul juy'], ['Таза сорпаны бақылау ретінде қалдыр', 'bul !juq !juy !qay'], ['37 °C-та 1 тәулік ұста', 'bul @h37 @wait'], ['Лайланған сорпаны микроскоппен қара', 'bul juq @wait @mic']],
+  rules: [['bul juq @wait', '#b8a878', 'f', 'Сорпа қатты лайланып, жағымсыз иіс шықты – бактериялар көп', 'bact'], ['bul juy @wait', '#dcd0a8', '', 'Сорпа сәл лайланды – бактериялар аз', 'bact'], ['bul qay @wait', '#ece4c4', '', 'Сорпа мөлдір дерлік', 'clear'], ['bul @wait', '#f0e8c8', '', 'Сорпа мөлдір – стерильді (бақылау)', 'clear'], ['bul', '#f0e8c8', '', 'Мөлдір сорпа']],
+  q: ['Жемісті неге жуу керек?', 'Ішек инфекцияларының (дизентерия, сальмонеллез) жұғу жолдары.', 'Тамақтану гигиенасының 5 ережесін жазыңыз.'] });
+BN('14', { title: 'Шырындардағы С дәруменін анықтау (йодометрия)', goal: 'Йод-крахмал ерітіндісінің түссізденуі арқылы әртүрлі шырындардағы С дәруменінің мөлшерін салыстыру.',
+  rg: [['yk', 'Йод-крахмал ерітіндісі (көк)', '#2a2a7a'], ['lim', 'Лимон шырыны', '#f4ec90'], ['itm', 'Итмұрын тұнбасы', '#d88a4a'], ['alm', 'Алма шырыны', '#f3e2a8'], ['su', 'Су', '#dfeef6']], n: 4, tools: ['shk'],
+  steps: [['1-пробиркадағы йод-крахмалға итмұрын тұнбасын тамыз', 'yk itm'], ['2-пробиркаға лимон шырынын тамыз', 'yk lim'], ['3-пробиркаға алма шырынын тамыз', 'yk alm'], ['4-пробиркаға су тамыз (бақылау)', 'yk su']],
+  rules: [['yk itm', '#f0e0c8', '', '2 тамшыдан кейін түссізденді – С дәрумені өте көп'], ['yk lim', '#c8c0d0', '', '6 тамшыдан кейін түссізденді – С дәрумені көп'], ['yk alm', '#5a5a9a', '', 'Көк түс әрең әлсіреді – С дәрумені аз'], ['yk su', '#2a2a7a', '', 'Көк түс сақталды – С дәрумені жоқ'], ['yk', '#2a2a7a', '', 'Көк йод-крахмал ерітіндісі']],
+  q: ['Қай шырында С дәрумені ең көп?', 'С дәрумені жетіспегенде қандай ауру болады?', 'Дәрумендерді суда және майда еритін деп жіктеңіз.'] });
+BN('15', { title: 'Қыздырудың С дәруменіне әсері', goal: 'Жаңа және қайнатылған шырындағы С дәруменінің мөлшерін салыстырып, тағамды дұрыс өңдеу ережесін шығару.',
+  rg: [['yk', 'Йод-крахмал ерітіндісі (көк)', '#2a2a7a'], ['qyr', 'Жаңа қырыққабат шырыны', '#e0ecc0'], ['apl', 'Апельсин шырыны', '#f4c060']], n: 4, tools: ['h100'],
+  steps: [['Жаңа қырыққабат шырынын йод-крахмалға тамыз', 'yk qyr !@h100'], ['Қырыққабат шырынын қайнатып, сосын тамыз', 'qyr @h100 yk'], ['Апельсин шырынымен де салыстыр', 'yk apl']],
+  rules: [['yk qyr @h100', '#4a4a8a', '', 'Көк түс сақталды – қайнатқанда С дәрумені бұзылды'], ['yk apl @h100', '#5a5a8a', '', 'Көк әрең әлсіреді – дәрумен бұзылған'], ['yk qyr', '#d8e0c8', '', 'Түссізденді – жаңа шырында С дәрумені бар'], ['yk apl', '#e8d8b0', '', 'Түссізденді – С дәрумені көп'], ['qyr @h100', '#d8e4b8', '', 'Қайнатылған шырын'], ['yk', '#2a2a7a', '', 'Көк йод-крахмал']],
+  q: ['Неліктен көкөністерді ұзақ қайнатуға болмайды?', 'А, D, В₁ дәрумендерінің маңызы мен көздері.', 'Гипо- және гипервитаминоз дегеніміз не?'] });
+BN('16', { title: 'Эритроциттердің түрлі концентрациядағы ерітінділерде өзгеруі', goal: 'Қан тамшысын гипо-, изо- және гипертониялық ерітінділерге салып, ішкі орта тұрақтылығының маңызын дәлелдеу.',
+  rg: [['qan', 'Қан тамшысы (бақа қаны)', '#c84a4a'], ['f09', 'NaCl 0,9% (физиологиялық)', '#e8f2f6'], ['su', 'Дистилденген су', '#e2f0f8'], ['n3', 'NaCl 3%', '#eaeef0']], n: 3, tools: ['mic'],
+  steps: [['Қанды физиологиялық ерітіндіге тамыз', 'qan f09'], ['Қанды дистилденген суға тамыз', 'qan su'], ['Қанды 3% тұзға тамыз', 'qan n3'], ['Үш препаратты микроскоппен қара', 'qan n3 @mic']],
+  rules: [['qan su', '#e88a8a', '', 'Ерітінді мөлдір қызыл болды – эритроциттер жарылды (гемолиз)', 'rbcH'], ['qan n3', '#c04a4a', '', 'Эритроциттер бүрісті – су жасушадан шықты', 'rbcC'], ['qan f09', '#c85a5a', '', 'Эритроциттер қалыпты, екі жағы ойыс', 'rbc'], ['qan', '#c84a4a', '', 'Қан тамшысы', 'rbc']],
+  q: ['Физиологиялық ерітінді медицинада не үшін қолданылады?', 'Гомеостаз дегеніміз не?', 'Қан, ұлпа сұйықтығы және лимфаның байланысы.'] });
+BN('21', { title: 'Қан тобын анықтау (стандартты сарысулармен)', goal: 'Анти-А және анти-В сарысулармен агглютинация реакциясы арқылы қан үлгілерінің тобын анықтау.',
+  rg: [['q1', '1-үлгі қаны', '#c84a4a'], ['q2', '2-үлгі қаны', '#c4484a'], ['q3', '3-үлгі қаны', '#c04648'], ['q4', '4-үлгі қаны', '#c84c4c'], ['aA', 'Анти-А сарысуы (көк)', '#7aa0e0'], ['aB', 'Анти-В сарысуы (сары)', '#f0e070']], n: 4, tools: ['shk', 'mic'],
+  steps: [['Әр үлгіні анти-А сарысуымен араластыр', 'aA'], ['Келесі тәжірибеде анти-В сарысуымен араластыр', 'aB'], ['Шайқап, 2 мин бақыла', 'aA @shk'], ['Агглютинацияны микроскоппен тексер', '@mic']],
+  rules: [['q1 aA', '#c86a8a', '', 'Агглютинация жоқ', 'rbc'], ['q1 aB', '#d07a5a', '', 'Агглютинация жоқ', 'rbc'], ['q2 aA', '#c86a8a', 'a', 'Эритроциттер жабысты (агглютинация бар)', 'agg'], ['q2 aB', '#d07a5a', '', 'Агглютинация жоқ', 'rbc'], ['q3 aA', '#c86a8a', '', 'Агглютинация жоқ', 'rbc'], ['q3 aB', '#d07a5a', 'a', 'Эритроциттер жабысты (агглютинация бар)', 'agg'], ['q4 aA', '#c86a8a', 'a', 'Эритроциттер жабысты (агглютинация бар)', 'agg'], ['q4 aB', '#d07a5a', 'a', 'Эритроциттер жабысты (агглютинация бар)', 'agg']],
+  q: ['Әр үлгінің қан тобын анықтаңыз (жауабы: 1 – I(0), 2 – II(A), 3 – III(B), 4 – IV(AB)).', 'Агглютинация неге пайда болады?', 'Қан құюдың ережелері мен резус-фактор.'] });
+BN('25', { title: 'Дене жүктемесінің шығарылған ауадағы CO₂-ге әсері', goal: 'Тыныштықта және жаттығудан кейін шығарылған ауадағы көмірқышқыл газын салыстырып, газ алмасудың жүктемеге тәуелділігін анықтау.',
+  rg: [['ind', 'Бромтимол көгі (көк)', '#3a6ad0'], ['tyn', 'Тыныштықтағы дем (10 рет үрлеу)', '#eef6fa'], ['jat', '20 рет отырып-тұрғаннан кейінгі дем', '#eef6fa']], n: 3, tools: ['blow', 'wait'],
+  steps: [['1-пробиркаға индикатор құйып, тыныштықтағы деммен үрле', 'ind tyn @blow'], ['2-пробиркаға индикатор құйып, жаттығудан кейін үрле', 'ind jat @blow'], ['3-пробиркада индикаторды үрлемей қалдыр', 'ind !tyn !jat']],
+  rules: [['ind jat @blow', '#e0c830', 'b', 'Индикатор тез (≈ 20 с) сарғайды – CO₂ көп'], ['ind tyn @blow', '#8ab070', 'b', 'Индикатор баяу (≈ 60 с) жасылданды – CO₂ аз'], ['ind', '#3a6ad0', '', 'Көк күйінде – бақылау']],
+  q: ['Жаттығу кезінде неге CO₂ көп бөлінеді?', 'Альвеолалардағы газ алмасу қалай жүреді?', 'Ұлпалардағы газ алмасуды түсіндіріңіз.'] });
+BN('30', { title: 'Қол жуудың тері бетіндегі микробтарға әсері', goal: 'Жуылмаған, сумен және сабынмен жуылған қолдан алынған жағындыларды қоректік ортада өсіріп, тері гигиенасының маңызын дәлелдеу.',
+  rg: [['bul', 'Стерильді сорпа', '#f0e8c8'], ['jq', 'Жуылмаған қол жағындысы', '#d8cca8'], ['su', 'Сумен жуылған қол', '#e4dcc0'], ['sab', 'Сабынмен 20 с жуылған қол', '#ece4c8'], ['ant', 'Антисептикпен өңделген қол', '#f0eacc']], n: 4, tools: ['h37', 'wait'],
+  steps: [['Сорпаға жуылмаған қол жағындысын сал', 'bul jq'], ['Сорпаға сумен жуылған қол жағындысын сал', 'bul su'], ['Сорпаға сабынмен жуылған қол жағындысын сал', 'bul sab'], ['37 °C-та 1 тәулік ұста', 'bul @h37 @wait']],
+  rules: [['bul jq @wait', '#b0a070', 'f', 'Қатты лайланды – микробтар өте көп'], ['bul su @wait', '#c8b888', '', 'Лайланды – су микробтарды толық кетірмеді'], ['bul sab @wait', '#e4dcb8', '', 'Сәл лайлы – микробтар аз'], ['bul ant @wait', '#ece6c8', '', 'Мөлдір – микробтар жойылды'], ['bul @wait', '#f0e8c8', '', 'Мөлдір (бақылау)'], ['bul', '#f0e8c8', '', 'Мөлдір сорпа']],
+  q: ['Қол жуудың дұрыс тәсілін сипаттаңыз.', 'Бактериялық, саңырауқұлақ және паразиттік тері ауруларына мысал.', 'Терінің қорғаныш қызметі.'] });
+BN('42', { title: 'Тұздың йодталғанын анықтау', goal: 'Йодталған және кәдімгі тұзды крахмал реакциясы арқылы ажыратып, йодтың қалқанша без үшін маңызын түсіндіру.',
+  rg: [['iy', 'Йодталған тұз ерітіндісі', '#f0f4f6'], ['ka', 'Кәдімгі тұз ерітіндісі', '#f0f4f6'], ['kr', 'Крахмал ерітіндісі', '#f2f0ea'], ['sir', 'Сірке суы', '#f4f4ea'], ['hp', 'Сутек асқын тотығы 3%', '#f6f8fa']], n: 3, tools: ['shk'],
+  steps: [['Йодталған тұзға крахмал мен сірке суын қос', 'iy kr sir'], ['Сутек асқын тотығын тамызып шайқа', 'iy kr sir hp @shk'], ['Кәдімгі тұзбен қайтала', 'ka kr sir hp']],
+  rules: [['iy kr sir hp', '#3a3a8a', '', 'Көк түс пайда болды – тұзда йод бар'], ['ka kr sir hp', '#eef0f2', '', 'Түс өзгермеді – йод жоқ'], ['kr', '#f0f0ea', '', 'Реактивтерді толық қосыңыз']],
+  q: ['Йод тапшылығынан қандай ауру пайда болады?', 'Қалқанша без қандай гормон бөледі? Оның қызметі.', 'Эндокринді бездерді атап, бөлетін гормондарын жазыңыз.'] });
+BN('60', { title: 'Арал маңы суының тұздылығын анықтау', goal: 'Су сынамаларындағы тұз мөлшерін сапалық реакция мен буландыру арқылы салыстырып, Арал апатының экологиялық салдарын түсіндіру.',
+  rg: [['tay', 'Тау өзенінің суы', '#e2f0f6'], ['syr', 'Сырдария суы (Қызылорда)', '#d8e4e0'], ['ara', 'Арал теңізінің суы', '#d0e0e0'], ['ag', 'AgNO₃ (күміс нитраты)', '#f6f6f6'], ['osk', 'Бидай өскіні', '#a8d080']], n: 4, tools: ['h100', 'wait'],
+  steps: [['Әр суға күміс нитратын тамыз', 'ag'], ['Арал суын буландыр', 'ara @h100 !ag'], ['Арал суына өскін салып, 3 тәулік күт', 'ara osk @wait3'], ['Тау суына өскін салып, 3 тәулік күт', 'tay osk @wait3']],
+  rules: [['ara ag', '#f4f4f0', 'pc', 'Қою ақ тұнба – хлоридтер (тұз) өте көп'], ['syr ag', '#eef0f0', 'p', 'Ақ тұнба – тұз біршама'], ['tay ag', '#e8f0f4', '', 'Әлсіз лайлану – тұз аз'], ['ara @h100', '#e8ecec', 'p', 'Түбінде көп тұз қалды (≈ 100 г/л)'], ['ara osk @wait3', '#d8e2dc', 'sy', 'Өскін солып, сарғайды – тұзды су өсімдікке зиянды'], ['osk @wait3', '#dceee8', 'sR', 'Өскін жақсы өсті'], ['osk', '#dceee8', 's', 'Өскін салынды']],
+  q: ['Арал апатының 3 себебі мен 3 салдары.', 'Тұзды топырақта неге өсімдік өспейді?', 'Қазақстанның басқа экологиялық мәселелері.'] });
+
+/* ================= 9-СЫНЫП: пробиркалық тәжірибелер ================= */
+BN('u1', { title: 'Жасушадағы каталаза ферментінің әсері', goal: 'Тірі жасушаларда (картоп, бауыр) каталаза ферментінің сутек асқын тотығын ыдыратуын бақылап, жасуша компоненттерінің қызметін түсіндіру.',
+  rg: [['kar', 'Шикі картоп кесегі', '#efe6c8'], ['qay', 'Қайнатылған картоп', '#e8dcb8'], ['bau', 'Шикі бауыр кесегі', '#8a3a3a'], ['hp', 'Сутек асқын тотығы 3%', '#f6f8fa'], ['su', 'Су', '#dfeef6']], n: 4, tools: ['fire', 'h100'],
+  steps: [['Шикі картопқа H₂O₂ құй', 'kar hp'], ['Шикі бауырға H₂O₂ құй', 'bau hp'], ['Қайнатылған картопқа H₂O₂ құй', 'qay hp'], ['Көбікке сөнуге жақын шырпы жақындат', 'bau hp @fire']],
+  rules: [['bau hp @fire', '#c88080', 'bf', 'Шырпы жарқ етіп тұтанды – оттек бөлінді'], ['bau hp', '#c88080', 'bf', 'Қатты көпіршіді – каталаза өте белсенді'], ['kar hp', '#f4eedc', 'b', 'Көпіршіктер бөлінді – каталаза бар'], ['qay hp', '#ece4c8', '', 'Көпіршік жоқ – фермент қайнағанда бұзылды'], ['su', '#dfeef6', '', 'Өзгеріс жоқ']],
+  q: ['Каталаза қай органоидта (пероксисома) орналасқан?', 'Неліктен қайнатылған картоп әрекеттеспеді?', 'Жасушаның негізгі компоненттері мен қызметтерін кестеге жазыңыз.'] });
+BN('u4', { title: 'Ашытқы популяциясының өсуін санау', goal: 'Ашытқы жасушаларын бірнеше тәулік бойы санап, популяция өсуінің қисығын (экспоненциалды → сигмоидты) салу.',
+  rg: [['ash', 'Ашытқы (аз мөлшер)', '#e8dcb8'], ['qan', 'Қант ерітіндісі (қоректік орта)', '#f6f2e6']], n: 2, tools: ['h37', 'wait', 'mic'],
+  steps: [['Ашытқыны қоректік ортаға сал', 'ash qan'], ['0-тәулікте микроскоппен жасушаларды сана', 'ash qan @mic'], ['1 тәулік күтіп, қайта сана', 'ash qan @wait @mic'], ['3 тәулікке дейін сана', 'ash qan @wait3'], ['6 тәулікке дейін сана', 'ash qan @wait6']],
+  rules: [['ash qan @wait6', '#d8c8a0', 'p', 'Жасушалар саны артпайды, өлі жасушалар көп – тұрақталу кезеңі (K)', 'yeastN:85'], ['ash qan @wait3', '#e0d0a8', 'b', 'Жасушалар өте көп – экспоненциалды өсу', 'yeastN:70'], ['ash qan @wait', '#e8dab4', 'b', 'Жасушалар саны 4 есе өсті', 'yeastN:25'], ['ash qan', '#ece2c0', '', 'Жасушалар аз (≈ 6 көру аймағында)', 'yeastN:6'], ['ash', '#e8dcb8', '', 'Қорексіз ашытқы', 'yeastN:5']],
+  q: ['Санау нәтижесі бойынша өсу қисығын салыңыз.', 'Неліктен өсу тоқтады? Шектеуші факторларды атаңыз.', 'Экспоненциалды және сигмоидты өсудің айырмашылығы.'] });
+BN('u6', { title: 'Көміртек айналымы: элодея мен ұлудың CO₂ алмасуы', goal: 'Гидрокарбонат индикаторы арқылы өсімдіктің (фотосинтез) және жануардың (тыныс алу) CO₂ алмасуын анықтап, көміртек айналымын түсіндіру.',
+  rg: [['ind', 'Гидрокарбонат индикаторы (қызыл)', '#d8506a'], ['elo', 'Элодея бұтағы', '#5aa84a'], ['ulu', 'Тоспа ұлуы', '#8a6a4a']], n: 4, tools: ['light', 'dark', 'wait'],
+  steps: [['Индикаторға элодея салып, жарыққа қой', 'ind elo @light'], ['Индикаторға ұлу салып, жарыққа қой', 'ind ulu'], ['Индикаторға элодея мен ұлуды бірге сал', 'ind elo ulu'], ['Элодеяны қараңғыда ұста', 'ind elo @dark'], ['Барлығын 1 тәулік күт', 'ind @wait']],
+  rules: [['ind elo ulu @light @wait', '#d8506a', '', 'Түс өзгермеді – CO₂ сіңірілуі мен бөлінуі тең (тепе-теңдік)'], ['ind elo @dark @wait', '#e8c040', '', 'Сарғайды – қараңғыда элодея тек тыныс алып, CO₂ бөлді'], ['ind elo @light @wait', '#a03a8a', '', 'Күлгін түс – фотосинтез CO₂-ні сіңірді'], ['ind ulu @wait', '#e8c040', '', 'Сарғайды – ұлу тыныс алып, CO₂ бөлді'], ['ind @wait', '#d8506a', '', 'Түс өзгермеді (бақылау)'], ['ind', '#d8506a', '', 'Қызыл индикатор. Жағдайды таңдап, күтіңіз']],
+  q: ['Көміртек айналымындағы фотосинтез бен тыныс алудың рөлін сызба арқылы көрсетіңіз.', 'Неліктен элодея + ұлу пробиркасында түс өзгермеді?', 'Азот айналымына қатысатын бактерияларды атаңыз.'] });
+BN('u7', { title: 'Ауыр металдармен ластанған судың өсімдікке әсері', goal: 'Кен өндіру аймағынан шыққан ауыр металдар (мыс) бар судың тұқымның өнуі мен өсуіне әсерін анықтау.',
+  rg: [['tuq', 'Кресс-салат тұқымы', '#c8a870'], ['su', 'Таза су', '#dfeef6'], ['cu1', 'CuSO₄ әлсіз ерітіндісі (0,01%)', '#b8d8ec'], ['cu2', 'CuSO₄ күшті ерітіндісі (0,1%)', '#6aa0d8']], n: 3, tools: ['light', 'wait'],
+  steps: [['Тұқымды таза суға сал', 'tuq su'], ['Тұқымды әлсіз мыс ерітіндісіне сал', 'tuq cu1'], ['Тұқымды күшті мыс ерітіндісіне сал', 'tuq cu2'], ['Жарықта 5 тәулік күт', 'tuq @wait5']],
+  rules: [['tuq cu2 @wait5', '#6aa0d8', '', 'Тұқым өнбеді – улы концентрация'], ['tuq cu1 @wait5', '#b8d8ec', 'sy', 'Өнгіштігі төмен, тамыры қысқа, өскін сарғайған'], ['tuq su @wait5', '#dceee8', 'sR', 'Барлық тұқым өнді, тамырлары ұзын'], ['tuq', '#e0e8ee', '', 'Тұқым салынды. Күтіңіз']],
+  q: ['Ауыр металдар қорек тізбегі арқылы адамға қалай жетеді?', 'Рекультивация дегеніміз не?', 'Қалдықтарды қайта өңдеудің пайдасы.'] });
+BN('u10', { title: 'Ас қорыту ферменттерінің спецификалығы', goal: 'Амилаза, пепсин және липазаның тек белгілі бір затты ыдырататынын тәжірибе арқылы дәлелдеу.',
+  rg: [['kr', 'Крахмал ерітіндісі', '#f2f0ea'], ['aq', 'Жұмыртқа ағы (лайлы ақуыз)', '#e6e6dc'], ['may', 'Сүт (май)', '#f8f6ee'], ['ami', 'Амилаза', '#f0f0e4'], ['pep', 'Пепсин + HCl', '#f0ece4'], ['lip', 'Липаза', '#f2eee4'], ['yod', 'Йод', '#a0522d'], ['fen', 'Фенолфталеин (сілтілі орта, қызғылт)', '#e070a0']], n: 5, tools: ['h37'],
+  steps: [['Крахмалға амилаза қосып, 37 °C-та ұста, сосын йод тамыз', 'kr ami yod @h37'], ['Ақуызға пепсин қосып, 37 °C-та ұста', 'aq pep @h37'], ['Сүтке фенолфталеин мен липаза қосып, 37 °C-та ұста', 'may fen lip @h37'], ['Крахмалға пепсин қосып тексер (бақылау)', 'kr pep yod @h37']],
+  rules: [['kr ami yod @h37', '#ece0b8', '', 'Йод көгермеді – крахмал мальтозаға ыдырады'], ['kr yod', '#20204a', '', 'Көк-күлгін – крахмал ыдырамаған'], ['aq pep @h37', '#f6f4ee', '', 'Лайлы ақуыз мөлдірленді – пептидтерге ыдырады'], ['aq @h37', '#e6e6dc', '', 'Лайлы күйінде – ақуыз ыдырамады'], ['may fen lip @h37', '#f6f2e8', '', 'Қызғылт түс жоғалды – май қышқылдары түзілді'], ['may fen @h37', '#e070a0', '', 'Қызғылт күйінде – май ыдырамады'], ['fen', '#e070a0', '', 'Қызғылт индикатор']],
+  q: ['Ферменттердің спецификалығын «кілт пен құлып» моделімен түсіндіріңіз.', 'Әр фермент қай мүшеде бөлінеді?', 'Ыдырау өнімдері қайда сіңеді?'] });
+BN('u11', { title: 'Температура мен pH-тың амилаза белсенділігіне әсері', goal: 'Амилазаның крахмалды ыдырату жылдамдығын әртүрлі температура мен pH кезінде салыстыру.',
+  rg: [['kr', 'Крахмал ерітіндісі', '#f2f0ea'], ['ami', 'Амилаза (сілекей)', '#f0f0e4'], ['hcl', 'HCl (қышқыл орта)', '#f4f4f0'], ['yod', 'Йод', '#a0522d']], n: 4, tools: ['ice', 'h37', 'h100'],
+  steps: [['Крахмал + амилаза: мұзда ұста, сосын йод', 'kr ami yod @ice'], ['Крахмал + амилаза: 37 °C, сосын йод', 'kr ami yod @h37 !hcl'], ['Амилазаны қайнатып, крахмалға қос, йод тамыз', 'kr ami yod @h100'], ['Крахмал + амилаза + HCl: 37 °C, йод', 'kr ami hcl yod @h37']],
+  rules: [['kr ami yod @h100', '#20204a', '', 'Көк – фермент денатурацияланды (қайтымсыз)'], ['kr ami hcl yod', '#2a2a6a', '', 'Көк – қышқыл ортада амилаза жұмыс істемейді'], ['kr ami yod @ice', '#3a3a7a', '', 'Көк – суықта фермент баяу (қайтымды)'], ['kr ami yod @h37', '#ece0b8', '', 'Сары – крахмал толық ыдырады (оптимум)'], ['kr yod', '#20204a', '', 'Көк – крахмал бар']],
+  q: ['Ферменттің белсенділік-температура графигін сызыңыз.', 'Неліктен 100 °C-та фермент қалпына келмейді?', 'Асқазанда сілекей амилазасы неге тоқтайды?'] });
+BN('u12', { title: 'Өттің майларды эмульгациялауы', goal: 'Өттің майды ұсақ тамшыларға бөлетінін (эмульгация) және оның липаза әсерін жеделдететінін тәжірибеде көрсету.',
+  rg: [['su', 'Су', '#dfeef6'], ['may', 'Өсімдік майы', '#f0d860'], ['ot', 'Өт (немесе жуғыш зат)', '#9ab040'], ['lip', 'Липаза + индикатор', '#e070a0']], n: 3, tools: ['shk', 'wait', 'mic', 'h37'],
+  steps: [['1-пробирка: су + май, шайқа', 'su may @shk !ot'], ['2-пробирка: су + май + өт, шайқа', 'su may ot @shk'], ['10 мин күтіп, екеуін салыстыр', 'may @shk @wait'], ['Эмульсияны микроскоппен қара', 'may ot @mic'], ['Эмульсияға липаза қосып, 37 °C-та ұста', 'may ot lip @h37']],
+  rules: [['may ot lip @h37', '#f2eedc', 'e', 'Индикатор тез түссізденді – майдың ыдырауы жеделдеді', 'emul'], ['may lip @h37', '#e8a0b8', 'l', 'Индикатор баяу өзгерді – ірі тамшылар баяу ыдырайды', 'oil'], ['su may ot @shk', '#f4ecc8', 'e', 'Тұрақты ақшыл эмульсия – май ұсақ тамшыларға бөлінді', 'emul'], ['su may @shk @wait', '#e8eef0', 'l', 'Май қайтадан бетіне жиналды', 'oil'], ['su may @shk', '#ecead0', 'e', 'Уақытша лайланды', 'oil'], ['su may', '#e8eef0', 'l', 'Май су бетінде бөлек қабат', 'oil']],
+  q: ['Өт фермент пе? Дәлелдеңіз.', 'Тамшы кішірейгенде липаза неге тез әсер етеді?', 'Өт қай мүшеде түзіліп, қайда жиналады?'] });
+BN('u13', { title: 'Пияз жасушасындағы плазмолиз және деплазмолиз (осмос)', goal: 'Пияз жасушаларын гипертониялық және гипотониялық ерітінділерге салып, судың осмос арқылы пассивті тасымалын бақылау.',
+  rg: [['piy', 'Қызыл пияз эпидермисі', '#d8a0c0'], ['tuz', 'NaCl 8% ерітіндісі', '#eaeef0'], ['su', 'Дистилденген су', '#e2f0f8']], n: 3, tools: ['mic', 'wait'],
+  steps: [['Эпидермисті суға салып, микроскоппен қара', 'piy su !tuz @mic'], ['Эпидермиске тұз ерітіндісін тамызып қара', 'piy tuz @mic'], ['Тұздан кейін қайта су қосып қара (деплазмолиз)', 'piy tuz su @mic']],
+  rules: [['piy tuz su', '#c890b8', '', 'Цитоплазма қайта қабырғаға жабысты – деплазмолиз', 'turg'], ['piy tuz', '#e0c8d8', '', 'Цитоплазма қабырғадан ажырады – плазмолиз (су шықты)', 'plasm'], ['piy su', '#c890b8', '', 'Жасушалар сірескен (тургор), вакуоль толық', 'turg'], ['piy', '#d8a0c0', '', 'Пияз эпидермисі', 'turg']],
+  q: ['Осмос пен диффузияның айырмашылығы.', 'Пассивті және активті тасымалды салыстырыңыз.', 'Неліктен тыңайтқышты көп берсе, өсімдік солады?'] });
+BN('u16', { title: 'Аэробты және анаэробты жағдайда ашытқының тыныс алуы', goal: 'Ашытқының оттек бар және оттексіз жағдайда тыныс алу өнімдерін салыстыру.',
+  rg: [['ash', 'Ашытқы + глюкоза', '#e8dcb8'], ['may', 'Май қабаты (O₂ кірмейді)', '#f0d860'], ['ak', 'Әк суы', '#eef2f2'], ['met', 'Метилен көгі', '#3a5ab0']], n: 4, tools: ['h37', 'shk'],
+  steps: [['1-пробирка: ашытқыны шайқап (ауа), 37 °C-та ұста', 'ash @shk @h37 !may'], ['2-пробирка: ашытқы бетін маймен жауып, 37 °C-та ұста', 'ash may @h37'], ['Майлы пробиркаға метилен көгін қос (оттекті тексеру)', 'ash may met @h37'], ['Газды әк суы арқылы өткіз', 'ash ak @h37']],
+  rules: [['ash may met @h37', '#e8dcb8', 'l', 'Метилен көгі түссізденді – оттек жоқ, анаэробты жағдай'], ['ash met @h37', '#5a70c0', '', 'Көк сақталды – оттек бар'], ['ash may ak @h37', '#eeeeea', 'pl', 'Әк суы лайланды, спирт иісі – анаэробты тыныс (ашу)'], ['ash ak @h37', '#eeeeea', 'p', 'Әк суы лайланды – аэробты тыныс алу (CO₂)'], ['ash may @h37', '#e8dcb8', 'lb', 'Көпіршіктер, спирт иісі – ашу жүруде'], ['ash @shk @h37', '#ece0bc', 'bf', 'Көп көпіршік, ашытқы тез көбейеді – аэробты тыныс'], ['ash', '#e8dcb8', '', 'Ашытқы суспензиясы']],
+  q: ['Аэробты және анаэробты тыныс алудың теңдеулерін жазыңыз.', 'Қай жағдайда АТФ көп түзіледі?', 'Адам бұлшық етінде анаэробты тыныс алу қашан жүреді?'] });
+BN('u20', { title: 'Зәр үлгілерін талдау', goal: 'Зәр үлгілерін тест-жолақтармен және сапалық реакциялармен талдап, бүйрек пен зат алмасу ауруларының белгілерін анықтау.',
+  rg: [['z1', '№1 зәр үлгісі', '#f2e08a'], ['z2', '№2 зәр үлгісі', '#f2e8a0'], ['z3', '№3 зәр үлгісі', '#e8d890'], ['glu', 'Глюкоза тест-жолағы', '#f6f0a0'], ['aq', 'Сульфосалицил қышқылы (ақуызға)', '#f4f4f0'], ['ben', 'Бенедикт реактиві', '#5a8ad8']], n: 4, tools: ['h100', 'mic'],
+  steps: [['Әр үлгіге глюкоза тест-жолағын батыр', 'glu'], ['Әр үлгіге ақуызға сынама жаса', 'aq'], ['№2 үлгіні Бенедикт реактивімен қыздырып тексер', 'z2 ben @h100'], ['№3 үлгінің тұнбасын микроскоппен қара', 'z3 @mic']],
+  rules: [['z2 glu', '#4a8a4a', '', 'Жолақ жасыл-қоңыр – глюкоза бар (қант диабетіне күдік)'], ['z2 ben @h100', '#c8501e', 'r', 'Кірпіш-қызыл тұнба – глюкоза бар'], ['glu', '#f2e08a', '', 'Жолақ сары – глюкоза жоқ'], ['z3 aq', '#f4f2ea', 'p', 'Ақ тұнба – ақуыз бар (бүйрек сүзгісі зақымдалған)'], ['aq', '#f2e8a0', '', 'Мөлдір – ақуыз жоқ'], ['z3', '#e0d088', '', 'Лейкоциттер мен тұз кристалдары – бүйрек қабынуы', 'cheek'], ['ben @h100', '#5a90c8', '', 'Көк – глюкоза жоқ']],
+  q: ['Әр үлгі бойынша қорытынды жасаңыз.', 'Сау адамның зәрінде неге глюкоза мен ақуыз болмайды?', 'Бүйрек ауруларының алдын алу шаралары.'] });
+BN('u30', { title: 'Құлпынайдан ДНҚ бөліп алу', goal: 'Өсімдік жасушаларынан ДНҚ-ны бөліп алып, оның жіп тәрізді құрылысын көзбен көру.',
+  rg: [['qul', 'Құлпынай', '#d84a5a'], ['buf', 'Бөліп алу ерітіндісі (жуғыш зат + тұз + су)', '#e8f2f8'], ['spi', 'Мұздай этил спирті', '#f4f6f8']], n: 3, tools: ['mash', 'filt', 'ice', 'mic'],
+  steps: [['Құлпынайды ез', 'qul @mash'], ['Бөліп алу ерітіндісін қосып, ақырын араластыр', 'qul buf @mash'], ['Сүзгіден өткіз', 'qul buf @filt'], ['Сүзіндіге мұздай спиртті ақырын құй', 'qul buf spi @filt'], ['Шыққан жіптерді микроскоппен қара', 'qul buf spi @filt @mic']],
+  rules: [['qul buf spi @mash @filt', '#e88a90', 'tl', 'Спирт қабатында ақ жіптер шоғыры пайда болды – бұл ДНҚ', 'threads'], ['qul buf spi @filt', '#e88a90', 'l', 'Жіптер аз – алдымен құлпынайды езу керек', 'clear'], ['qul buf spi', '#c86a7a', 'l', 'Лайлы – алдымен сүзу керек'], ['qul buf @mash @filt', '#e07a88', '', 'Мөлдір қызғылт сүзінді (ДНҚ ерітіндіде)'], ['qul buf @mash', '#d0606a', 'f', 'Жуғыш зат жасуша мембраналарын ерітті'], ['qul @mash', '#c84a5a', '', 'Езілген құлпынай'], ['qul', '#d84a5a', '', 'Тұтас құлпынай']],
+  q: ['Жуғыш зат, тұз және спирттің рөлін түсіндіріңіз.', 'ДНҚ-ның құрылысын (қос спираль, комплементарлық) сипаттаңыз.', 'ДНҚ жасушаның қай бөлігінде орналасқан?'] });
+BN('u32', { title: 'Пияз тамыр ұшындағы митоз фазаларын анықтау', goal: 'Пияз тамыр ұшының препаратын дайындап, митоз фазаларын тауып, митоз индексін есептеу.',
+  rg: [['tam', 'Пияз тамыр ұшы', '#f4ecd8'], ['hcl', 'HCl 1М', '#f4f4f0'], ['ats', 'Ацетокармин', '#b8304a'], ['su', 'Су', '#dfeef6']], n: 3, tools: ['h37', 'mic'],
+  steps: [['Тамыр ұшын HCl-да 37 °C-та 5 мин ұста', 'tam hcl @h37'], ['Сумен шайып, ацетокарминмен боя', 'tam hcl ats'], ['Жабын әйнекпен жаншып, микроскоппен қара', 'tam hcl ats @h37 @mic']],
+  rules: [['tam hcl ats @h37', '#b04060', '', 'Профаза, метафаза, анафаза, телофазадағы жасушалар көрінеді', 'mito'], ['tam ats', '#c06070', '', 'Жасушалар тығыз жабысып, фазаларды ажырату қиын', 'onion'], ['tam', '#f4ecd8', '', 'Боялмаған ұлпа', 'clear']],
+  q: ['Көру аймағындағы әр фазадағы жасушаларды санап, кестеге жазыңыз.', 'Митоз индексі = бөлініп жатқан жасушалар / барлық жасушалар × 100%. Есептеңіз.', 'Неліктен тамыр ұшы алынды?'] });
+BN('u48', { title: 'Коацерват тамшыларын алу (тіршіліктің пайда болу моделі)', goal: 'Желатин мен гуммиарабиктен коацерват тамшыларын алып, Опарин гипотезасындағы алғашқы жасушаға дейінгі құрылымдарды модельдеу.',
+  rg: [['jel', 'Желатин ерітіндісі 1% (нәруыз)', '#f6f0d8'], ['gum', 'Гуммиарабик 1% (көмірсу)', '#f4ecd0'], ['hcl', 'Әлсіз HCl (pH ≈ 4)', '#f4f4f0'], ['su', 'Су', '#dfeef6']], n: 3, tools: ['h37', 'shk', 'mic'],
+  steps: [['Желатин мен гуммиарабикті араластырып, 37 °C-та ұста', 'jel gum @h37'], ['Тамшылатып HCl қосып шайқа', 'jel gum hcl @shk'], ['Микроскоппен коацерваттарды қара', 'jel gum hcl @mic'], ['Тек желатинге қышқыл қосып салыстыр', 'jel hcl !gum']],
+  rules: [['jel gum hcl', '#ece2c8', 'e', 'Ерітінді лайланды – ішінде ұсақ коацерват тамшылары', 'coac'], ['jel gum', '#f4eed8', '', 'Мөлдір ерітінді – тамшылар жоқ', 'clear'], ['jel hcl', '#f4eed8', '', 'Коацерват түзілмеді – екі түрлі полимер қажет', 'clear']],
+  q: ['Опарин–Холдейн гипотезасының негізгі кезеңдерін жазыңыз.', 'Коацерват пен жасушаның ұқсастығы мен айырмашылығы.', 'Тіршіліктің пайда болуы туралы тағы қандай гипотезалар бар?'] });
+
 /* ---------- тіркеу ---------- */
+delete SIMS.t12; delete SIMS.u7; // биологиялық емес модельдер (жылусыйымдылық, калькулятор) – пробиркалық тәжірибемен ауыстырылды
 Object.entries(SIMS).forEach(([id, sp]) => { LAB['s_' + id] = SIM_MK[sp.t](sp); });
+Object.entries(BENCH).forEach(([id, sp]) => {
+  const B = mkBench(sp);
+  const extra = L => { const o = LAB['s_' + L.n] || (L.lab && LAB[L.lab] && !['sort', 'order', 'key'].includes(L.lab) && !(L.lab === 'eco' && !keyOf(L)) ? LAB[L.lab] : null); return o; };
+  LAB['b_' + id] = { title: sp.title,
+    html: L => { const o = extra(L); return B.html(L) + (o ? `<div style="margin-top:22px;border-top:2px dashed var(--line);padding-top:14px"><div class="eyebrow">Қосымша интерактивті модель</div><h3 style="font-size:18px;margin:4px 0 10px">${esc(o.title)}</h3>${o.html(L)}</div>` : ''); },
+    init: L => { B.init(L); const o = extra(L); if (o && o.init) o.init(L); } };
+});
 
 readHash(); render();
 </script>
