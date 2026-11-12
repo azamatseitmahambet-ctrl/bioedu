@@ -301,12 +301,13 @@ const WD = ['Жс','Дс','Сс','Ср','Бс','Жм','Сб'];
 const DEFAULTS = {
   teacher: '', school: '', letter: 'А', total: 25, start: '2026-09-01', days: [1, 4],
   holidays: '2026-10-26..2026-11-01\n2026-12-16..2026-12-17\n2026-12-29..2027-01-07\n2027-03-08\n2027-03-18..2027-03-29\n2027-05-01\n2027-05-07\n2027-05-09',
-  values: {9:'Еңбекқорлық және кәсіби біліктілік',10:'Тәуелсіздік және отаншылдық',11:'Әділдік және жауапкершілік',12:'Бірлік және ынтымақ',1:'Заң және тәртіп',2:'Жасампаздық және жаңашылдық',3:'Бірлік және ынтымақ',4:'Еңбекқорлық және кәсіби біліктілік',5:'Тәуелсіздік және отаншылдық'},
+  values: {9:'Еңбекқорлық және кәсіби біліктілік',10:'Тәуелсіздік және отаншылдық',11:'Әділдік және жауапкершілік',12:'Бірлік және ынтымақ',1:'Заң және тәртіп',2:'Жасампаздық және жаңашылдық',3:'Тәуелсіздік және отаншылдық',4:'Еңбекқорлық және кәсіби біліктілік',5:'Бірлік және ынтымақ'}, valv: 2,
   quotes: {'Тәуелсіздік және отаншылдық':'«Отан – оттан да ыстық» (халық мақалы)','Бірлік және ынтымақ':'«Ынтымақ жүрген жерде ырыс бірге жүреді» (халық мақалы)','Әділдік және жауапкершілік':'«Тура биде туған жоқ» (халық мақалы)','Заң және тәртіп':'«Тәртіп бар жерде береке бар» (халық мақалы)','Еңбекқорлық және кәсіби біліктілік':'«Еңбек етсең ерінбей, тояды қарның тіленбей» (Абай)','Жасампаздық және жаңашылдық':'«Ізденген жетер мұратқа» (халық мақалы)'},
   dateOv: {}, absent: {}, video: {}
 };
 function loadS() { try { const s = JSON.parse(localStorage.getItem('bioedu8') || '{}'); return Object.assign(structuredClone(DEFAULTS), s); } catch (e) { return structuredClone(DEFAULTS); } }
 let S = loadS();
+if (S.valv !== 2) { S.values = structuredClone(DEFAULTS.values); S.valv = 2; } // «Адал азамат» бағдарламасы бойынша жаңарту
 function saveS() { try { localStorage.setItem('bioedu8', JSON.stringify(S)); } catch (e) {} }
 function toast(t) { const el = $('#toast'); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => el.hidden = true, 2600); }
 function hashStr(s) { let h = 2166136261; for (const c of String(s)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
@@ -509,11 +510,13 @@ function vPrompt(i, st) {
   const arr = B[st], k = VST.findIndex(s => s[0] === st), p = arr[(i + k * 3) % arr.length];
   return p.replace(/\{t\}/g, L.title).replace(/\{c\}/g, vTerm(L, i));
 }
-function vBox(i, st) { const v = valueFor(DATES[i]); return `<div class="vbox">💎 <b>Құндылық (${esc(lc1(v.value))}):</b> ${esc(vPrompt(i, st))}</div>`; }
+const VAS = { psy: 'ҚБ: мадақтау («Жарайсың!»).', nw: 'ҚБ: «Бас бармақ» – құндылықпен байланыстырған жауапқа.', pr: 'ҚБ: жұптар бір-біріне «Рахмет, себебі ...» деп кері байланыс береді.', gr: 'ҚБ: «2 жұлдыз, 1 тілек» – топтың бірлескен әрекетіне.', fix: 'Дескрипторда 1 балл (құндылыққа негізделген жағдаят).', rf: 'Өзін-өзі бағалау.' };
+function vNo(st) { return VST.findIndex(x => x[0] === st) + 1; }
+function vBox(i, st) { const v = valueFor(DATES[i]); return `<div class="vbox">💎 <b>Құндылыққа бағытталған тапсырма (${esc(lc1(v.value))}, ${vNo(st)}-карточка):</b> ${esc(vPrompt(i, st))}</div>`; }
 function vCards(i) {
   const v = valueFor(DATES[i]), pink = ['pr', 'gr'];
-  const cell = s => `<td style="width:50%;padding:10px;vertical-align:top;background:${pink.includes(s[0]) ? '#ffd6e7' : '#eaffb0'};border:1px solid #bbb"><b>${s[1]}</b><br>${esc(vPrompt(i, s[0]))}</td>`;
-  return `<h3 style="margin:16px 0 8px;font-size:17px">Құндылықтың ҚМЖ кезеңдеріне кіріктірілуі: ${v.month} – ${esc(lc1(v.value))} айы</h3>
+  const cell = s => `<td style="width:50%;padding:10px;vertical-align:top;background:${pink.includes(s[0]) ? '#ffd6e7' : '#eaffb0'};border:1px solid #bbb"><b>${vNo(s[0])}. ${s[1]}</b><br>${esc(vPrompt(i, s[0]))}</td>`;
+  return `<h3 style="margin:16px 0 8px;font-size:17px">Қосымша. Құндылықтың сабақ кезеңдеріне кіріктірілуі: ${v.month} – ${esc(lc1(v.value))} айы</h3>
   <p class="note">Карточкаларды басып шығарып, сабақ кезеңдерінде тақтаға іліп немесе оқушыларға таратуға болады.</p>
   <div class="tw"><table class="kmzh vcards" style="min-width:0">${[0, 2, 4].map(r => `<tr>${cell(VST[r])}${cell(VST[r + 1])}</tr>`).join('')}</table></div>`;
 }
@@ -577,11 +580,11 @@ function kmzhRows(L, i) {
   /* ---- САБАҚТЫҢ БАСЫ ---- */
   const hwQs = pL ? (pL.qs['Білу және түсіну'] || pL.mc.map(m => m[0])).slice(0, 3).map(cleanQ) : [];
   rows.push({ st: 'Сабақтың басы', t: '5 мин',
-    te: `<b>І. Ұйымдастыру кезеңі.</b> Сәлемдесу, сыныпты түгендеу.<br><br><b>Психологиялық ахуал: ${psy[0]}.</b> ${esc(psy[1])}${vBox(i, 'psy')}<br>`
+    te: `<b>І. Ұйымдастыру кезеңі.</b> Сәлемдесу, сыныпты түгендеу. <b>Айдың құндылығы:</b> ${v.month} – ${esc(lc1(v.value))} айы. <b>Апта дәйексөзі:</b> ${esc(qText)} – оқушылар дәйексөздің мағынасын бір сөйлеммен түсіндіреді.<br><br><b>Психологиялық ахуал: ${psy[0]}.</b> ${esc(psy[1])}${vBox(i, 'psy')}<br>`
       + `<b>Үй тапсырмасын сұрау: «Сиқырлы қалпақ».</b> ${pL ? `Қалпақтың ішіне өткен тақырып («${esc(pL.title)}») бойынша сұрақтар жазылған қағаздар салынады. Оқушы қағазды суырып алып, сұраққа жауап береді:<ul>${hwQs.map(q => `<li>${esc(q)}</li>`).join('')}</ul>` : 'Өткен сыныпта алған білімді еске түсіретін сұрақтар қойылады.'}`
       + `<b>Тақырыпты ашу: «4 сурет – 1 тақырып».</b> Тақтада 4 сурет көрсетіледі. Оқушылар суреттердің ортақ байланысын тауып, бүгінгі тақырыпты анықтайды.${cueHTML(L)}`,
     sa: 'Мұғаліммен амандасып, сабаққа дайындалады. Сыныптасына жылы тілек айтып, жағымды көңіл-күй сыйлайды. ' + VSA.psy + '<br><br>Үй тапсырмасы бойынша сұраққа жауап береді.<br><br>Суреттерді өзара байланыстырып, бүгінгі тақырыпты болжайды.',
-    as: 'ҚБ: «Жарайсыңдар!» ауызша мадақтау.<br><br>ҚБ: «Бас бармақ» әдісі.', re: '4 сурет (слайд)' });
+    as: 'ҚБ: «Жарайсыңдар!» ауызша мадақтау (құндылыққа сай айтылған жылы сөзге).<br><br>ҚБ: «Бас бармақ» әдісі.', re: `4 сурет (слайд)<br>Құндылық карточкасы (${vNo('psy')})` });
   /* ---- САБАҚТЫҢ ОРТАСЫ ---- */
   const bk = isBook(L) ? `, ${bookPages(L)}` : '';
   rows.push({ st: 'Сабақтың ортасы', t: '9 мин',
@@ -625,8 +628,8 @@ function kmzhRows(L, i) {
     as: PT.length ? `Дескриптор – ${pPts} балл:<br>` + dsl(PT) : 'ҚБ: «Бағдаршам».',
     re: `Виртуалды зертхана: ${siteLink('lab', i, labT)}` });
   rows.push({ st: '', t: '10 мин',
-    te: `<b>(Ж) Тапсырма 3. Деңгейлік жеке тапсырмалар.</b> <i>[Блум: ${[...new Set(IT.map(t => blName(t.bloom).toLowerCase()))].join(' → ')}]</i> Әр оқушыға жұмыс парағы беріледі.<ol>${IT.map(li).join('')}</ol>`
-      + `<div class="vbox">💎 <b>Сабақты бекіту – құндылық (${esc(lc1(C10.v.value))}):</b> соңғы тапсырма – құндылыққа негізделген жағдаят (1 балл). Аптаның дәйексөзі: «${esc(S.quotes['q' + i] || C10.v.quote)}».</div>`
+    te: `<b>(Ж) Тапсырма 3. Деңгейлік жеке тапсырмалар (сабақты бекіту).</b> <i>[Блум: ${[...new Set(IT.map(t => blName(t.bloom).toLowerCase()))].join(' → ')}]</i> Әр оқушыға жұмыс парағы беріледі.<ol>${IT.map(li).join('')}</ol>`
+      + `<div class="vbox">💎 <b>Құндылыққа бағытталған тапсырма (${esc(lc1(C10.v.value))}, ${vNo('fix')}-карточка):</b> соңғы тапсырма – құндылыққа негізделген жағдаят (1 балл): ${esc(vPrompt(i, 'fix'))}</div>`
       + `<br><br><b>ЕБҚ тапсырмасы: «${esc(E.name)}»</b> (бөлек уақыт берілмейді, 3-тапсырмамен қатар орындалады). ${E.te}`,
     sa: 'Оқушылар:' + sal(IT) + `ЕБҚ оқушысы: ${esc(E.sa)}`,
     as: `Дескриптор – ${iPts} балл:<br>` + dsl(IT) + `<b>Барлығы (2- және 3-тапсырма): ${pPts + iPts} балл</b><br><br>ЕБҚ: «Жарайсың!» мадақтау, жұлдызша стикер.`,
@@ -640,8 +643,8 @@ function kmzhRows(L, i) {
     sa: 'Сабақта алған білімін бағалап, өз деңгейін белгілейді.<br><br>Үй тапсырмасын күнделікке жазып алады.',
     as: 'ҚБ: «Жарайсыңдар!»', re: `${rf[1]} суреті (${siteLink('refl', i, 'Рефлексия бөлімі')})<br>Оқулық: ${esc(bookFull(L))}` });
   // құндылық – сабақтың әр кезеңіне (жаңа тақырып, топтық, жұптық, бекіту, рефлексия)
-  [[1, 'nw'], [2, 'gr'], [3, 'pr'], [5, 'rf']].forEach(([r, st]) => { if (rows[r]) { rows[r].te += vBox(i, st); rows[r].sa += '<br><br>' + VSA[st]; } });
-  if (rows[4]) rows[4].sa += '<br>' + VSA.fix;
+  [[1, 'nw'], [2, 'gr'], [3, 'pr'], [5, 'rf']].forEach(([r, st]) => { if (rows[r]) { rows[r].te += vBox(i, st); rows[r].sa += '<br><br>' + VSA[st]; rows[r].as += '<br><br>' + VAS[st]; rows[r].re += `<br>Құндылық карточкасы (${vNo(st)})`; } });
+  if (rows[4]) { rows[4].sa += '<br>' + VSA.fix; rows[4].re += `<br>Құндылық карточкасы (${vNo('fix')})`; }
   return rows;
 }
 function rowsTN(L, i) {  // ТЖБ / Қайталау сабағы
@@ -729,19 +732,16 @@ function renderKMZH(i) {
   <div id="kmzhDoc">
   <div class="tw"><table class="kmzh">
     <tr><td class="k">Бөлім:</td><td colspan="3">${L.sec}-бөлім. ${esc(SEC[L.sec])}</td></tr>
-    <tr><td class="k">Педагогтың аты-жөні:</td><td colspan="3">${esc(S.teacher) || '<span class="note noprint">Баптаулар бөлімінде толтырыңыз</span>'}</td></tr>
+    <tr><td class="k">Педагогтің тегі, аты, әкесінің аты (болған жағдайда):</td><td colspan="3">${esc(S.teacher) || '<span class="note noprint">Баптаулар бөлімінде толтырыңыз</span>'}</td></tr>
     <tr><td class="k">Күні:</td><td colspan="3">${fmt(date)}</td></tr>
     <tr><td class="k">Сынып: ${GR} «${esc(S.letter)}»</td><td>Қатысушылар саны: <b id="pres">${total - ab}</b></td><td colspan="2">Қатыспағандар саны: <input class="att noprint" id="absIn" type="number" min="0" max="${total}" value="${ab}" aria-label="Қатыспағандар саны"><span class="print-only">${ab}</span></td></tr>
     <tr><td class="k">Сабақтың тақырыбы:</td><td colspan="3"><b>${esc(lessonLabel(i))}</b>${esc(labTxt)}</td></tr>
-    <tr><td class="k">Осы сабақта қол жеткізілетін оқу мақсаттары (оқу бағдарламасына сілтеме):</td><td colspan="3">${codesTxt}</td></tr>
+    <tr><td class="k">Оқу бағдарламасына сәйкес оқыту мақсаттары:</td><td colspan="3">${codesTxt}</td></tr>
     <tr><td class="k">Сабақтың мақсаты:</td><td colspan="3">${(L.kind === 'R' || L.kind === 'T') ? 'Тоқсанда өтілген тақырыптар бойынша білімді жүйелеу және тексеру.' : esc(lessonAim(L))}</td></tr>
-    ${(SEQ[i].kind === 'L' || SEQ[i].kind === 'P') && typeof blList === 'function' && blList(i).length ? `<tr><td class="k">Блум таксономиясы бойынша деңгейлер:</td><td colspan="3">${blList(i).map((x, j) => `${j + 1}) <b>${blName(x[0][0])}</b> – ${esc(x[0][1])}`).join('; ')} <i>(3-жеке тапсырмада)</i>. Миға шабуыл – білу, түсіну; топтық жұмыс – түсіну, талдау; жұптық жұмыс – қолдану, талдау.</td></tr>` : ''}
-    <tr><td class="k">Құндылықтар:</td><td colspan="3"><b>Құндылық:</b> ${v.month} – ${esc(lc1(v.value))} айы.${L.kind === 'T' ? '' : L.kind === 'R' ? ' (психологиялық ахуал мен рефлексияға кіріктірілген)' : ' Сабақтың 6 кезеңіне кіріктірілген: психологиялық ахуал, жаңа тақырып, жұптық жұмыс, топтық жұмыс, сабақты бекіту, кері байланыс және рефлексия (төмендегі карточкаларды қараңыз).'}</td></tr>
-    <tr><td class="k">${weekNo(date)}-апта дәйексөзі:</td><td colspan="3">${esc(qText)}</td></tr>
   </table></div>
   <h3 style="margin:16px 0 8px;font-size:17px">Сабақтың барысы</h3>
   <div class="tw"><table class="kmzh">
-    <tr><th style="width:14%">Сабақтың кезеңі / уақыты</th><th style="width:30%">Педагогтың әрекеті</th><th style="width:22%">Оқушының әрекеті</th><th style="width:17%">Бағалау</th><th style="width:17%">Ресурстар</th></tr>
+    <tr><th style="width:14%">Сабақтың кезеңі/ уақыт</th><th style="width:30%">Педагогтің әрекеті</th><th style="width:22%">Оқушының әрекеті</th><th style="width:17%">Бағалау</th><th style="width:17%">Ресурстар</th></tr>
     ${rows.map(r => `<tr><td><span class="stage">${r.st}</span><br>${r.t}</td><td>${r.te}</td><td>${r.sa}</td><td>${r.as}</td><td class="res">${r.re}</td></tr>`).join('')}
   </table></div>
   ${L.kind === 'R' || L.kind === 'T' ? '' : vCards(i)}
@@ -759,7 +759,7 @@ function afterKMZH(i) {
 function renderKTZH(cur) {
   let html = '', lastQ = 0;
   SEQ.forEach((s, i) => {
-    if (s.q !== lastQ) { lastQ = s.q; const h = SEQ.filter(x => x.q === s.q).length; html += `<tr class="qrow"><td colspan="7">${s.q}-тоқсан · ${h} сағат</td></tr>`; }
+    if (s.q !== lastQ) { lastQ = s.q; const h = SEQ.filter(x => x.q === s.q).length; html += `<tr class="qrow"><td colspan="7">${['І', 'ІІ', 'ІІІ', 'ІV'][s.q - 1]} тоқсан (${h} сағат)</td></tr>`; }
     const L = s.ref ? D.lessons[s.ref] : null;
     const notes = [];
     if (s.kind === 'P') notes.push('<span class="tag lab">Практикум</span>');
@@ -769,7 +769,7 @@ function renderKTZH(cur) {
     if (L && L.bjb) notes.push('<span class="tag bjb">БЖБ</span>');
     if (s.kind === 'T') notes.push('<span class="tag tjb">ТЖБ</span>');
     html += `<tr${i === cur ? ' class="cur"' : ''}><td class="n">${i + 1}</td>
-      <td>${L ? esc(SEC[L.sec]) : (s.kind === 'T' ? 'Жиынтық бағалау' : 'Қайталау')}</td>
+      <td>${L ? `${L.sec}-бөлім. ${esc(SEC[L.sec])}` : (s.kind === 'T' ? 'Жиынтық бағалау' : 'Қайталау')}</td>
       <td>${inner('kmzh', i, lessonLabel(i))}</td>
       <td>${L ? L.codes.map((c, j) => `<span class="code">${c}</span>${j === 0 ? ' ' + esc(lc1(L.goal)) : ''}`).join('<br>') : '—'}</td>
       <td class="mono">1</td>
@@ -777,9 +777,9 @@ function renderKTZH(cur) {
       <td>${notes.join(' ')}</td></tr>`;
   });
   return `<div class="sheet"><div class="lesson-head"><div><div class="eyebrow">Күнтізбелік-тақырыптық жоспар · ${GR}-сынып · аптасына 2 сағат</div><h2>Биология, 68 сағат</h2>
-  <p class="note">Оқулық: ${esc(D.book.authors)}. ${esc(D.book.title)}. – ${esc(D.book.pub)}. Оқу мақсаттарының кодтары жаңартылған мазмұндағы үлгілік оқу бағдарламасы бойынша${GR === '8' ? '' : '; тақырыптар бағдарлама бойынша берілген, оқулық параграфтарымен салыстырыңыз'}. Мектептің бекітілген КТЖ-сымен салыстырыңыз.</p></div>
+  <p class="note">Оқулық: ${esc(D.book.authors)}. ${esc(D.book.title)}. – ${esc(D.book.pub)}. Оқу мақсаттарының кодтары жаңартылған мазмұндағы үлгілік оқу бағдарламасы бойынша; тақырыптар оқулық мазмұны бойынша (§ және бет). Мектептің бекітілген КТЖ-сымен салыстырыңыз.</p></div>
   <div class="actions"><button class="btn pri" type="button" data-copy="#ktzhDoc">Word-қа көшіру</button><a class="btn" href="#g${GR}-setup-${cur}">Күндерді баптау</a></div></div>
-  <div class="tw" id="ktzhDoc"><table class="grid"><thead><tr><th>№</th><th>Бөлім</th><th>Сабақ тақырыбы</th><th>Оқу мақсаты</th><th>Сағ.</th><th>Күні</th><th>Ескерту</th></tr></thead><tbody>${html}</tbody>
+  <div class="tw" id="ktzhDoc"><p style="text-align:center;margin:4px 0"><b>Пәндер бойынша орта мерзімді (күнтізбелік-тақырыптық) жоспар</b><br>Биология пәні ${GR}-сыныбы<br>Барлығы: 68 сағат, аптасына: 2 сағат</p><table class="grid"><thead><tr><th>№р/с</th><th>Бөлім/Ауыспалы тақырыптар</th><th>Сабақтың тақырыбы</th><th>Оқу мақсаттары</th><th>Сағат саны</th><th>Мерзімі</th><th>Ескерту</th></tr></thead><tbody>${html}</tbody>
   <tfoot><tr><td></td><td colspan="3"><b>Барлығы</b></td><td class="mono"><b>68</b></td><td colspan="2"></td></tr></tfoot></table></div></div>`;
 }
 function afterKTZH() {
@@ -1339,7 +1339,7 @@ function renderSetup(i) {
   return `<div class="sheet"><div class="lesson-head"><div><div class="eyebrow">Баптаулар</div><h2>Мұғалім, сынып және оқу күнтізбесі</h2>
   <p class="note">Деректер тек осы браузерде сақталады. Сабақ күндері КТЖ мен ҚМЖ-ға автоматты түрде түседі.</p></div></div>
   <form class="form" id="setForm" autocomplete="off">
-    <label>Педагогтың аты-жөні<input id="sTeacher" value="${esc(S.teacher)}" placeholder="Мысалы: Иванов Иван"></label>
+    <label>Педагогтің тегі, аты, әкесінің аты<input id="sTeacher" value="${esc(S.teacher)}" placeholder="Мысалы: Иванов Иван"></label>
     <label>Мектеп<input id="sSchool" value="${esc(S.school)}"></label>
     <label>Сынып литері<input id="sLetter" value="${esc(S.letter)}" maxlength="3"></label>
     <label>Сыныптағы оқушы саны<input id="sTotal" type="number" min="1" max="45" value="${esc(S.total)}"></label>
