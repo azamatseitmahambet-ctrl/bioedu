@@ -458,7 +458,7 @@ const VQ = {
 };
 
 /* ---------- Құндылықты ҚМЖ-ның 6 кезеңіне кіріктіру ({t} – тақырып, {c} – негізгі ұғым) ---------- */
-const VST = [['psy', 'Психологиялық ахуал'], ['nw', 'Жаңа тақырып'], ['pr', 'Жұптық жұмыс'], ['gr', 'Топтық жұмыс'], ['fix', 'Сабақты бекіту'], ['rf', 'Кері байланыс және рефлексия']];
+const VST = [['psy', 'Психологиялық ахуал'], ['nw', 'Жаңа тақырып'], ['pr', 'Жұптық жұмыс'], ['gr', 'Топтық жұмыс'], ['fix', 'Сабақ соңы'], ['rf', 'Кері байланыс және рефлексия']];
 const VSTAGE = {
   'Тәуелсіздік және отаншылдық': {
     psy: ['Туған өлкеңнің табиғатынан өзіңе ең ұнайтын бір нәрсені атап, жұбыңа жылы тілек айт.', 'Қазақстанның өзің мақтан тұтатын бір табиғи байлығын атап, көршіңе сәттілік тіле.', 'Шеңбер бойымен «Менің Отаным – ...» сөйлемін бір сөзбен аяқтап, келесі оқушыға жалғастыр.', 'Бір-біріңе «Сен елімізге керек адамсың, себебі ...» деп бір жақсы қасиетін айт.'],
@@ -505,17 +505,17 @@ const VSTAGE = {
 };
 const VSA = { psy: 'Құндылыққа сай жылы сөз (тілек) айтады.', nw: 'Жаңа тақырыпты құндылықпен байланыстырып, пікір айтады.', pr: 'Жұбымен құндылыққа сай әрекет етіп, ортақ жауап ұсынады.', gr: 'Топта құндылыққа сай әрекет етіп, ортақ шешімге үлес қосады.', fix: 'Жағдаятты талдап, құндылыққа сай шешім ұсынады.', rf: 'Өз әрекетін құндылық тұрғысынан бағалайды.' };
 function vTerm(L, i) { const T = (L.terms || []).map(x => x.replace(/\s*[–—(:].*$/, '').trim()).filter(x => x && x.length < 40); return T.length ? lc1(T[i % T.length]) : lc1(L.title); }
-function vPrompt(i, st) {
+function vPrompt(i, st, alt) {
   const L = getL(i), v = valueFor(DATES[i]), B = VSTAGE[v.value] || VSTAGE['Әділдік және жауапкершілік'];
-  const arr = B[st], k = VST.findIndex(s => s[0] === st), p = arr[(i + k * 3) % arr.length];
+  const arr = B[st], k = VST.findIndex(s => s[0] === st), p = arr[(i + k * 3 + (alt ? 1 : 0)) % arr.length];
   return p.replace(/\{t\}/g, L.title).replace(/\{c\}/g, vTerm(L, i));
 }
 const VAS = { psy: 'ҚБ: мадақтау («Жарайсың!»).', nw: 'ҚБ: «Бас бармақ» – құндылықпен байланыстырған жауапқа.', pr: 'ҚБ: жұптар бір-біріне «Рахмет, себебі ...» деп кері байланыс береді.', gr: 'ҚБ: «2 жұлдыз, 1 тілек» – топтың бірлескен әрекетіне.', fix: 'Дескрипторда 1 балл (құндылыққа негізделген жағдаят).', rf: 'Өзін-өзі бағалау.' };
 function vNo(st) { return VST.findIndex(x => x[0] === st) + 1; }
-function vBox(i, st) { const v = valueFor(DATES[i]); return `<div class="vbox">💎 <b>Құндылыққа бағытталған тапсырма (${esc(lc1(v.value))}, ${vNo(st)}-карточка):</b> ${esc(vPrompt(i, st))}</div>`; }
+function vBox(i, st, alt) { const v = valueFor(DATES[i]); return `<div class="vbox">💎 <b>Құндылыққа бағытталған тапсырма (${esc(lc1(v.value))}, ${vNo(st)}-карточка):</b> ${esc(vPrompt(i, st, alt))}</div>`; }
 function vCards(i) {
   const v = valueFor(DATES[i]), pink = ['pr', 'gr'];
-  const cell = s => `<td style="width:50%;padding:10px;vertical-align:top;background:${pink.includes(s[0]) ? '#ffd6e7' : '#eaffb0'};border:1px solid #bbb"><b>${vNo(s[0])}. ${s[1]}</b><br>${esc(vPrompt(i, s[0]))}</td>`;
+  const cell = s => `<td style="width:50%;padding:10px;vertical-align:top;background:${pink.includes(s[0]) ? '#ffd6e7' : '#eaffb0'};border:1px solid #bbb"><b>${vNo(s[0])}. ${s[1]}</b><br>${esc(vPrompt(i, s[0], s[0] === 'fix'))}</td>`;
   return `<h3 style="margin:16px 0 8px;font-size:17px">Қосымша. Құндылықтың сабақ кезеңдеріне кіріктірілуі: ${v.month} – ${esc(lc1(v.value))} айы</h3>
   <p class="note">Карточкаларды басып шығарып, сабақ кезеңдерінде тақтаға іліп немесе оқушыларға таратуға болады.</p>
   <div class="tw"><table class="kmzh vcards" style="min-width:0">${[0, 2, 4].map(r => `<tr>${cell(VST[r])}${cell(VST[r + 1])}</tr>`).join('')}</table></div>`;
@@ -629,7 +629,7 @@ function kmzhRows(L, i) {
     re: `Виртуалды зертхана: ${siteLink('lab', i, labT)}` });
   rows.push({ st: '', t: '10 мин',
     te: `<b>(Ж) Тапсырма 3. Деңгейлік жеке тапсырмалар (сабақты бекіту).</b> <i>[Блум: ${[...new Set(IT.map(t => blName(t.bloom).toLowerCase()))].join(' → ')}]</i> Әр оқушыға жұмыс парағы беріледі.<ol>${IT.map(li).join('')}</ol>`
-      + `<div class="vbox">💎 <b>Құндылыққа бағытталған тапсырма (${esc(lc1(C10.v.value))}, ${vNo('fix')}-карточка):</b> соңғы тапсырма – құндылыққа негізделген жағдаят (1 балл): ${esc(vPrompt(i, 'fix'))}</div>`
+      + `<div class="vbox">💎 <b>Құндылыққа бағытталған тапсырма (${esc(lc1(C10.v.value))}):</b> соңғы тапсырма – құндылыққа негізделген жағдаят (1 балл): ${esc(vPrompt(i, 'fix'))}</div>`
       + `<br><br><b>ЕБҚ тапсырмасы: «${esc(E.name)}»</b> (бөлек уақыт берілмейді, 3-тапсырмамен қатар орындалады). ${E.te}`,
     sa: 'Оқушылар:' + sal(IT) + `ЕБҚ оқушысы: ${esc(E.sa)}`,
     as: `Дескриптор – ${iPts} балл:<br>` + dsl(IT) + `<b>Барлығы (2- және 3-тапсырма): ${pPts + iPts} балл</b><br><br>ЕБҚ: «Жарайсың!» мадақтау, жұлдызша стикер.`,
@@ -644,7 +644,8 @@ function kmzhRows(L, i) {
     as: 'ҚБ: «Жарайсыңдар!»', re: `${rf[1]} суреті (${siteLink('refl', i, 'Рефлексия бөлімі')})<br>Оқулық: ${esc(bookFull(L))}` });
   // құндылық – сабақтың әр кезеңіне (жаңа тақырып, топтық, жұптық, бекіту, рефлексия)
   [[1, 'nw'], [2, 'gr'], [3, 'pr'], [5, 'rf']].forEach(([r, st]) => { if (rows[r]) { rows[r].te += vBox(i, st); rows[r].sa += '<br><br>' + VSA[st]; rows[r].as += '<br><br>' + VAS[st]; rows[r].re += `<br>Құндылық карточкасы (${vNo(st)})`; } });
-  if (rows[4]) { rows[4].sa += '<br>' + VSA.fix; rows[4].re += `<br>Құндылық карточкасы (${vNo('fix')})`; }
+  if (rows[4]) rows[4].sa += '<br>' + VSA.fix;
+  if (rows[5]) { rows[5].te = vBox(i, 'fix', 1) + rows[5].te; rows[5].sa = VSA.fix + '<br><br>' + rows[5].sa; rows[5].as = 'ҚБ: «Бас бармақ» – құндылыққа сай шешімге.<br><br>' + rows[5].as; rows[5].re = `Құндылық карточкасы (${vNo('fix')})<br>` + rows[5].re; }
   return rows;
 }
 function rowsTN(L, i) {  // ТЖБ / Қайталау сабағы
