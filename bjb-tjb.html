@@ -1244,7 +1244,7 @@ const INCL_M = { visual: 'Көруі нашар', hearing: 'Естуі наша�
 function simple(L) { const s = (L.intro || L.goal).split(/(?<=[.!?])\s+/).filter(x => x.length > 20).slice(0, 3).join(' '); return s || L.goal; }
 
 /* text-to-speech («Тыңдау» батырмасы) */
-const TTS = { voices: [], rate: 0.82, btn: null, gen: 0, started: 0 };
+const TTS = { voices: [], rate: 0.9, btn: null, gen: 0, started: 0 };
 function ttsOK() { return 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window; }
 function ttsLoad() { try { TTS.voices = speechSynthesis.getVoices() || []; } catch (e) { TTS.voices = []; } }
 if (ttsOK()) { ttsLoad(); try { speechSynthesis.addEventListener('voiceschanged', () => { ttsLoad(); const el = $('#ttsInfo'); if (el) el.textContent = ttsInfo(); }); } catch (e) {} }
@@ -1257,10 +1257,39 @@ function ttsPrep(t, v) {
   return t.replace(/[әғқңөұүһіӘҒҚҢӨҰҮҺІ]/g, c => KK2RU[c] || c);
 }
 function ttsInfo() {
+  if (kkUsable()) return 'Мәтін таза қазақша нейрондық дауыспен оқылады (ISSAI KazakhTTS моделі). Алғаш басқанда дауыс моделі бір рет жүктеледі, кейін тез оқиды. Интернет қажет.';
   if (!ttsOK()) return 'Бұл браузер дауыстап оқуды қолдамайды. Chrome, Edge немесе Safari арқылы ашыңыз.';
   const v = ttsVoice();
   if (!v) return 'Дауыс құрылғыдан жүктелуде. «Тыңдау» батырмасын басыңыз.';
   return /^kk/i.test(v.lang) ? `Дауыс: ${v.name} (қазақша)` : `Дауыс: ${v.name} (${v.lang}). Құрылғыда қазақ дауысы жоқ, сондықтан жақын дауыспен оқылады. Windows-та Microsoft Edge браузерінде қазақша дауыстар (Aigul, Daulet) бар.`;
+}
+/* Таза қазақша нейрондық дауыс (Piper, ISSAI KazakhTTS моделі) – браузердің өзінде жұмыс істейді, интернет керек */
+const KK = { mod: null, audio: null, failed: false, voice: 'kk_KZ-raya-x_low' };
+try { KK.voice = localStorage.getItem('bioeduKKvoice') || KK.voice; } catch (e) {}
+const KK_VOICES = [['kk_KZ-raya-x_low', 'Әйел дауысы (жеңіл, ≈ 20 МБ)'], ['kk_KZ-iseke-x_low', 'Ер дауысы (жеңіл, ≈ 20 МБ)'], ['kk_KZ-issai-high', 'Ең таза дауыс (ауыр, ≈ 110 МБ)']];
+const KK_SILENT = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=';
+function kkMod() { if (!KK.mod) KK.mod = import('https://cdn.jsdelivr.net/npm/@mintplex-labs/piper-tts-web@1.0.4/+esm').catch(e => { KK.mod = null; throw e; }); return KK.mod; }
+function kkUsable() { return !KK.failed && typeof WebAssembly === 'object' && navigator.onLine !== false; }
+async function kkSpeak(text, btn, gen) {
+  const a = KK.audio, parts = ttsChunks(ttsPrep(text, { lang: 'kk' }));
+  const P = await kkMod();
+  let shown = false;
+  const prog = p => { if (gen !== TTS.gen || !btn || !p || !p.total) return; const pc = Math.min(99, Math.round(p.loaded * 100 / p.total)); if (pc < 99) { btn.innerHTML = `⏳ Қазақ дауысы жүктелуде ${pc}%`; shown = true; } };
+  const make = t => P.predict({ text: t, voiceId: KK.voice }, prog);
+  let next = make(parts[0]);
+  for (let k = 0; k < parts.length; k++) {
+    const wav = await next;
+    if (gen !== TTS.gen) return;
+    if (shown) { btn.innerHTML = '⏹ Тоқтату'; shown = false; }
+    if (k + 1 < parts.length) next = make(parts[k + 1]);
+    const url = URL.createObjectURL(wav);
+    a.src = url; a.playbackRate = TTS.rate <= 0.75 ? 0.85 : TTS.rate >= 1.05 ? 1.15 : 1;
+    await a.play();
+    await new Promise(r => { a.onended = r; a.onpause = () => { if (gen !== TTS.gen) r(); }; });
+    URL.revokeObjectURL(url);
+    if (gen !== TTS.gen) return;
+  }
+  ttsSet(btn, false); if (TTS.btn === btn) TTS.btn = null;
 }
 function ttsChunks(t) {
   const out = []; let cur = '';
@@ -1276,8 +1305,21 @@ function ttsSet(btn, on) {
   btn.innerHTML = on ? '⏹ Тоқтату' : btn.dataset.label;
   btn.classList.toggle('pri', on); btn.setAttribute('aria-pressed', String(on));
 }
-function ttsStop() { TTS.gen++; try { if (ttsOK()) speechSynthesis.cancel(); } catch (e) {} ttsSet(TTS.btn, false); TTS.btn = null; }
+function ttsStop() { TTS.gen++; try { if (KK.audio) KK.audio.pause(); } catch (e) {} try { if (ttsOK()) speechSynthesis.cancel(); } catch (e) {} ttsSet(TTS.btn, false); TTS.btn = null; }
 function speak(text, btn) {
+  if (kkUsable()) {
+    const same = TTS.btn && TTS.btn === btn; ttsStop(); if (same) return;
+    if (!KK.audio) KK.audio = new Audio();
+    try { KK.audio.src = KK_SILENT; KK.audio.play().catch(() => {}); } catch (e) {}  // дыбысты батырма басқан сәтте ашу (iPhone үшін)
+    const gen = TTS.gen; TTS.btn = btn; ttsSet(btn, true);
+    kkSpeak(text, btn, gen).catch(e => {
+      if (gen !== TTS.gen) return;
+      console.warn('KK TTS', e); KK.failed = true; ttsSet(btn, false); TTS.btn = null;
+      toast('Қазақ дауысы жүктелмеді (интернетті тексеріңіз). Құрылғының дауысымен оқылады.');
+      speak(text, btn);
+    });
+    return;
+  }
   if (!ttsOK()) { toast('Бұл браузер дауыстап оқуды қолдамайды. Chrome, Edge немесе Safari арқылы ашыңыз.'); return; }
   const same = TTS.btn && TTS.btn === btn; ttsStop(); if (same) return;
   ttsLoad();
@@ -1392,13 +1434,14 @@ function renderIncl(i) {
     <p><button class="btn pri" type="button" id="tmrBtn">3 минуттық таймер</button> <span class="mono big" id="tmr">3:00</span></p><p class="note" id="adhdRes"></p></div>` : '') + chosen.map(x => x[1]).join('') + inclTips(m);
   return `<div class="sheet"><div class="lesson-head"><div><div class="eyebrow">Инклюзивті білім беру · ${GR}-сынып · ${i + 1}-сабақ</div><h2>${esc(lessonLabel(i))}</h2></div></div>
   <div class="incl-modes" role="group" aria-label="Оқушы санаты">${modes}</div>
-  ${voice ? `<div class="task" style="margin-bottom:14px"><div class="filters" style="margin:0"><label>Оқу жылдамдығы <select id="ttsRate"><option value="0.7">Баяу</option><option value="0.9">Қалыпты</option><option value="1.1">Жылдам</option></select></label><button class="btn sm" type="button" id="ttsTest">🔊 Дауысты тексеру</button><button class="btn sm" type="button" id="ttsStopAll">⏹ Тоқтату</button></div><p class="note" id="ttsInfo" style="margin:6px 0 0">${esc(ttsInfo())}</p></div>` : ''}
+  ${voice ? `<div class="task" style="margin-bottom:14px"><div class="filters" style="margin:0"><label>Оқу жылдамдығы <select id="ttsRate"><option value="0.7">Баяу</option><option value="0.9">Қалыпты</option><option value="1.1">Жылдам</option></select></label><label>Қазақ дауысы <select id="kkVoice">${KK_VOICES.map(v => `<option value="${v[0]}">${v[1]}</option>`).join('')}</select></label><button class="btn sm" type="button" id="ttsTest">🔊 Дауысты тексеру</button><button class="btn sm" type="button" id="ttsStopAll">⏹ Тоқтату</button></div><p class="note" id="ttsInfo" style="margin:6px 0 0">${esc(ttsInfo())}</p></div>` : ''}
   <div class="ws">${body}</div></div>`;
 }
 function afterIncl(i) {
   const L = getL(i);
   $$('[data-m]').forEach(b => b.addEventListener('click', () => { ttsStop(); INCL = b.dataset.m; render(); }));
   $$('[data-say]').forEach(b => b.addEventListener('click', () => speak(b.dataset.say, b)));
+  const kv = $('#kkVoice'); if (kv) { kv.value = KK.voice; kv.onchange = () => { ttsStop(); KK.voice = kv.value; KK.failed = false; try { localStorage.setItem('bioeduKKvoice', KK.voice); } catch (e) {} }; }
   const rs = $('#ttsRate'); if (rs) { rs.value = String(TTS.rate); rs.onchange = () => { TTS.rate = +rs.value; }; }
   const tt = $('#ttsTest'); if (tt) tt.onclick = () => speak(`Сәлеметсіз бе! Бүгінгі тақырып: ${L.title}.`, tt);
   const sa = $('#ttsStopAll'); if (sa) sa.onclick = ttsStop;
