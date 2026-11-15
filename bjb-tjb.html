@@ -2506,11 +2506,12 @@ async function docxDownload(sel) {
     if (typeof toast === 'function') toast('Word файлы жүктелді (Times New Roman 14' + (land ? ', альбомдық бет' : '') + ').');
   } catch (e) { (typeof toast === 'function' ? toast : console.warn)('Word файлы жасалмады: ' + e.message); }
 }
+/* «Word-қа көшіру» батырмасы бірден Word (.docx) құжатын жүктейді */
 function addDocxButtons(v) {
   $$('[data-copy]', v).forEach(b => {
-    if (b.nextElementSibling && b.nextElementSibling.dataset && b.nextElementSibling.dataset.docx) return;
-    const d = document.createElement('button'); d.type = 'button'; d.className = 'btn' + (b.classList.contains('sm') ? ' sm' : ''); d.dataset.docx = b.dataset.copy; d.textContent = 'Word (.docx) жүктеу';
-    d.onclick = () => docxDownload(b.dataset.copy); b.after(d);
+    const sel = b.dataset.copy, d = b.cloneNode(false);
+    d.removeAttribute('data-copy'); d.dataset.docx = sel; d.textContent = 'Word (.docx) жүктеу';
+    d.onclick = () => docxDownload(sel); b.replaceWith(d);
   });
 }
 
@@ -2576,7 +2577,6 @@ function render() {
   else if (TAB === 'refl') { v.innerHTML = renderRefl(CUR); }
   else if (TAB === 'extra') { v.innerHTML = renderExtra(CUR); afterExtra(CUR); }
   else if (TAB === 'setup') { v.innerHTML = renderSetup(CUR); afterSetup(); }
-  $$('[data-copy]', v).forEach(b => b.addEventListener('click', () => copyNode(b.dataset.copy)));
   addDocxButtons(v);
   const DXT = { incl: 'inkluziv', lab: 'zerthana', video: 'videosabaq', refl: 'refleksiya', extra: 'qosymsha_tapsyrmalar' };
   if (DXT[TAB] && !$('[data-docx]', v)) {
