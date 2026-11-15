@@ -941,6 +941,8 @@ function renderKMZH(i) {
     <tr><td class="k">Сабақтың тақырыбы:</td><td colspan="3"><b>${esc(lessonLabel(i))}</b>${esc(labTxt)}</td></tr>
     <tr><td class="k">Оқу бағдарламасына сәйкес оқыту мақсаттары:</td><td colspan="3">${codesTxt}</td></tr>
     <tr><td class="k">Сабақтың мақсаты:</td><td colspan="3">${(L.kind === 'R' || L.kind === 'T') ? 'Тоқсанда өтілген тақырыптар бойынша білімді жүйелеу және тексеру.' : esc(lessonAim(L))}</td></tr>
+    <tr><td class="k">Құндылық:</td><td colspan="3">${v.month} – ${esc(lc1(v.value))} айы («Адал азамат» біртұтас тәрбие бағдарламасы)</td></tr>
+    <tr><td class="k">Апта дәйексөзі:</td><td colspan="3">${esc(qText)}</td></tr>
   </table></div>
   <h3 style="margin:16px 0 8px;font-size:17px">Сабақтың барысы</h3>
   <div class="tw"><table class="kmzh">
